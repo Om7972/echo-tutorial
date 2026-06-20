@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 
 import "@workspace/ui/globals.css"
 import { Providers } from "@/components/providers"
-
+import { LogsPanel } from "@/components/logs-panel"
 
 const fontSans = Geist({
   subsets: ["latin"],
@@ -30,6 +30,9 @@ export default function RootLayout({
             {children}
           </Providers>
         </ClerkProvider>
+
+        {/* Dev-only in-app logs viewer — removed from production builds */}
+        {process.env.NODE_ENV !== "production" && <LogsPanel />}
       </body>
     </html>
   )
