@@ -10,8 +10,6 @@ export default function Page() {
   const addUser = useMutation(api.users.add);
 
   return (
-    <>
-    <Authenticated>
     <div className="flex flex-col items-center justify-center min-h-svh">
       <p>apps/web</p>
       <UserButton />
@@ -20,11 +18,5 @@ export default function Page() {
       {JSON.stringify(users, null, 2)}
       </div>
     </div>
-    </Authenticated>
-    <Unauthenticated>
-      <p>must be signed in!</p>
-      <SignInButton>Sign in!</SignInButton>
-    </Unauthenticated>
-    </>
   )
 }
