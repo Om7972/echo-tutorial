@@ -34,7 +34,7 @@ import {
   Heart,
   Laugh,
   Surprised,
-  Sad,
+  Frown,
   Angry,
 } from "lucide-react";
 import { usePaginatedMessages } from "@/hooks/use-paginated-messages";
@@ -63,7 +63,7 @@ const EMOJI_OPTIONS = [
   { emoji: "❤️", component: Heart },
   { emoji: "😂", component: Laugh },
   { emoji: "😮", component: Surprised },
-  { emoji: "😢", component: Sad },
+  { emoji: "😢", component: Frown },
   { emoji: "😠", component: Angry },
 ];
 

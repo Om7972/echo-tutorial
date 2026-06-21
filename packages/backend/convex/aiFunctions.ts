@@ -609,7 +609,7 @@ export const getAnalyticsDashboard = query({
 
     const filteredCalls = toolCalls.filter((t) => t.startedAt > cutoff);
 
-    const stats = {
+    const stats: any = {
       totalToolCalls: filteredCalls.length,
       completed: filteredCalls.filter((t) => t.status === "completed").length,
       failed: filteredCalls.filter((t) => t.status === "failed").length,
@@ -635,8 +635,8 @@ export const getAnalyticsDashboard = query({
       .collect();
 
     const filteredCosts = costMetrics.filter((m) => new Date(m.date).getTime() > cutoff);
-    const byDate = {};
-    const byProvider = {};
+    const byDate: any = {};
+    const byProvider: any = {};
 
     for (const metric of filteredCosts) {
       if (!byDate[metric.date]) {

@@ -186,7 +186,8 @@ export default defineSchema({
     pinnedById: v.string(),
     pinnedAt: v.number(),
   })
-    .index("by_conversation_id", ["conversationId"]),
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_message_id", ["messageId"]),
 
   internal_notes: defineTable({
     conversationId: v.id("conversations"),
@@ -301,6 +302,7 @@ export default defineSchema({
     totalCalls: v.number(),
     lastUpdated: v.number(),
   })
+    .index("by_org_id", ["orgId"])
     .index("by_org_date", ["orgId", "date"])
     .index("by_org_provider", ["orgId", "provider"]),
 

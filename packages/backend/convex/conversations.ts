@@ -40,7 +40,7 @@ export const listConversations = query({
     });
 
     // Sort: pinned first, then by priority (high > medium > low), then by last message timestamp descending
-    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    const priorityOrder: any = { high: 0, medium: 1, low: 2 };
     return conversations.sort((a: any, b: any) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
@@ -93,7 +93,9 @@ export const getMessagesPaginated = query({
 
     // Apply cursor if present
     if (args.cursor) {
-      const { timestamp, _id } = JSON.parse(Buffer.from(args.cursor, "base64").toString());
+      const { timestamp, _id } = JSON.parse(
+        (Buffer as any).from(args.cursor, "base64").toString()
+      );
       query = query.order("asc").filter((q) =>
         q.or(
           q.lt(q.field("timestamp"), timestamp),
@@ -117,7 +119,7 @@ export const getMessagesPaginated = query({
     let nextCursor: string | null = null;
     if (hasMore && messages.length > 0) {
       const firstMessage = messages[0];
-      nextCursor = Buffer.from(JSON.stringify({
+      nextCursor = (Buffer as any).from(JSON.stringify({
         timestamp: firstMessage.timestamp,
         _id: firstMessage._id
       })).toString("base64");
