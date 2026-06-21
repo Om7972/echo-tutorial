@@ -1,6 +1,9 @@
 import { AIMessage, AITool, AISessionMetadata, AIProviderName } from "./types";
 import { AIProviderManager, ProviderResponse } from "./providers";
 import { logger } from "../logger";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@workspace/backend/_generated/api";
+import OpenAI from "openai";
 
 // Tools schema
 const AGENT_TOOLS: AITool[] = [
@@ -85,8 +88,48 @@ export class AIAgentOrchestrator {
           return `[System Tool Output] Conversation #${session.conversationId} status marked as RESOLVED. Details: ${args.reason}`;
         case "handoff_to_human":
           return `[System Tool Output] Transferred client successfully to human agent. Wait queue time: ~2 mins. Priority: ${args.priority}`;
-        case "search_knowledge_base":
-          return `[System Tool Output] Found Article: 'How to Integrate Vapi Voice'. Retrieve Vapi Public Key from dashboard, add to .env config.`;
+        case "search_knowledge_base": {
+          const queryText = args.query;
+          const orgId = session.orgId;
+          
+          const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || "");
+          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" });
+          
+          let queryEmbedding: number[] = [];
+          if (process.env.OPENAI_API_KEY) {
+            try {
+              const response = await openai.embeddings.create({
+                model: "text-embedding-3-small",
+                input: queryText,
+              });
+              queryEmbedding = response.data[0]?.embedding || [];
+            } catch (err) {
+              logger.error(`OpenAI embedding failed during agent tool call: ${err}`);
+            }
+          }
+          
+          if (queryEmbedding.length === 0) {
+            const vector = Array.from({ length: 1536 }, () => Math.random() - 0.5);
+            const mag = Math.sqrt(vector.reduce((s, v) => s + v * v, 0));
+            queryEmbedding = vector.map(v => v / mag);
+          }
+          
+          const results = await convex.action(api.kb.semanticSearch, {
+            orgId,
+            queryEmbedding,
+            limit: 3,
+          });
+          
+          if (!results || results.length === 0) {
+            return `[System Tool Output] Knowledge Base search returned 0 results for: "${queryText}".`;
+          }
+          
+          const formatted = results.map((r: any, idx: number) => 
+            `Match #${idx+1} [Source: ${r.documentTitle} (${r.documentFileName}), Relevance: ${(r.score * 100).toFixed(1)}%]:\n"${r.text}"`
+          ).join("\n\n");
+          
+          return `[System Tool Output] Knowledge Base Results:\n\n${formatted}`;
+        }
         case "create_summary":
           return `[System Tool Output] Conversation Summary: Visitor queried integrations, system prompted custom Vapi setup coordinates.`;
         default:

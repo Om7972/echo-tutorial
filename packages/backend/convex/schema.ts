@@ -319,4 +319,62 @@ export default defineSchema({
   })
     .index("by_org_id", ["orgId"])
     .index("by_org_category", ["orgId", "category"]),
+
+  // ─── Smart Knowledge Base ──────────────────────────────────────────────────
+  documents: defineTable({
+    orgId: v.string(),
+    title: v.string(),
+    fileName: v.string(),
+    fileType: v.union(v.literal("pdf"), v.literal("docx"), v.literal("txt")),
+    storageId: v.optional(v.id("_storage")),
+    status: v.union(
+      v.literal("uploading"),
+      v.literal("processing"),
+      v.literal("indexed"),
+      v.literal("failed")
+    ),
+    version: v.number(),
+    category: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_org_category", ["orgId", "category"]),
+
+  chunks: defineTable({
+    orgId: v.string(),
+    documentId: v.id("documents"),
+    text: v.string(),
+    index: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_document_id", ["documentId"])
+    .index("by_org_id", ["orgId"]),
+
+  embeddings: defineTable({
+    orgId: v.string(),
+    chunkId: v.id("chunks"),
+    documentId: v.id("documents"),
+    embedding: v.array(v.float64()),
+  })
+    .vectorIndex("by_embedding", {
+      vectorField: "embedding",
+      dimensions: 1536,
+      filterFields: ["orgId"],
+    })
+    .index("by_chunk_id", ["chunkId"])
+    .index("by_document_id", ["documentId"]),
+
+  sources: defineTable({
+    orgId: v.string(),
+    documentId: v.id("documents"),
+    url: v.optional(v.string()),
+    name: v.string(),
+    description: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_document_id", ["documentId"]),
 });
