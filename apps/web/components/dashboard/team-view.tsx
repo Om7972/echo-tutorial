@@ -98,10 +98,11 @@ export function TeamView() {
             <h3 className="text-xs uppercase font-bold tracking-wider text-slate-300">Invite Collaborator</h3>
           </div>
 
-          <div className="space-y-3.5">
+           <div className="space-y-3.5">
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Email Address</label>
+              <label htmlFor="email" className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Email Address</label>
               <input
+                id="email"
                 type="email"
                 placeholder="colleague@company.com"
                 value={emailInput}
@@ -111,8 +112,10 @@ export function TeamView() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Select Role</label>
+              <label htmlFor="role" className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Select Role</label>
               <select
+                id="role"
+                title="Select Role"
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value as any)}
                 className="w-full px-3 py-2 bg-slate-900 border border-white/5 rounded-xl text-xs text-slate-200 focus:outline-none"

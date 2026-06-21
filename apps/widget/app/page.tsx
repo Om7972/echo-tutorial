@@ -124,9 +124,11 @@ export default function DemoPage() {
             <div className="space-y-4">
               {/* Org Name */}
               <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Organization Name</label>
+                <label htmlFor="org" className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Organization Name</label>
                 <input
+                  id="org"
                   type="text"
+                  placeholder="Organization Name"
                   value={org}
                   onChange={(e) => setOrg(e.target.value)}
                   className="w-full pl-3.5 pr-4 py-2 bg-slate-950 border border-slate-900 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-blue-500/50"
@@ -135,8 +137,9 @@ export default function DemoPage() {
 
               {/* Logo URL */}
               <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Logo Image URL (Optional)</label>
+                <label htmlFor="logo" className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Logo Image URL (Optional)</label>
                 <input
+                  id="logo"
                   type="text"
                   placeholder="https://example.com/logo.png"
                   value={logo}

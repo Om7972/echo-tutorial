@@ -32,6 +32,7 @@ export function HandoffScreen({ currentTheme }: HandoffScreenProps) {
         <button
           onClick={pop}
           disabled={status === "submitting"}
+          title="Go back"
           className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors disabled:opacity-20"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -65,12 +66,13 @@ export function HandoffScreen({ currentTheme }: HandoffScreenProps) {
 
               {/* Email Input */}
               <div className="space-y-1.5">
-                <label className="text-[9px] uppercase font-bold tracking-wider text-slate-450 dark:text-slate-500">
+                <label htmlFor="handoff-email" className="text-[9px] uppercase font-bold tracking-wider text-slate-455 dark:text-slate-500">
                   Email Address
                 </label>
                 <div className="relative flex items-center">
                   <Mail className="absolute left-3 w-4 h-4 text-slate-400" />
                   <input
+                    id="handoff-email"
                     type="email"
                     required
                     placeholder="you@example.com"
@@ -83,12 +85,13 @@ export function HandoffScreen({ currentTheme }: HandoffScreenProps) {
 
               {/* Message Input */}
               <div className="space-y-1.5">
-                <label className="text-[9px] uppercase font-bold tracking-wider text-slate-450 dark:text-slate-500">
+                <label htmlFor="handoff-message" className="text-[9px] uppercase font-bold tracking-wider text-slate-455 dark:text-slate-500">
                   Describe your problem
                 </label>
                 <div className="relative flex">
                   <FileText className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                   <textarea
+                    id="handoff-message"
                     required
                     rows={4}
                     placeholder="Enter details..."

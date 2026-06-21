@@ -2,8 +2,8 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useConvex } from "convex/react";
-import { api } from "@workspace/backend/convex/_generated/api";
-import { Id } from "@workspace/backend/convex/_generated/dataModel";
+import { api } from "@workspace/backend/_generated/api";
+import { Id } from "@workspace/backend/_generated/dataModel";
 
 interface UsePaginatedMessagesOptions {
   conversationId: Id<"conversations">;
@@ -26,22 +26,28 @@ export function usePaginatedMessages({
     isLoading,
     error,
     refetch,
-  } = useInfiniteQuery({
+  } = useInfiniteQuery<
+    any,
+    Error,
+    any,
+    any[],
+    string | null
+  >({
     queryKey: ["messages", conversationId],
     queryFn: async ({ pageParam }) => {
       const result = await convex.query(api.conversations.getMessagesPaginated, {
         conversationId,
         limit,
-        cursor: pageParam as string | undefined,
+        cursor: pageParam ?? undefined,
       });
       return result;
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled,
-    initialPageParam: null,
+    initialPageParam: null as string | null,
   });
 
-  const allMessages = data?.pages.flatMap((page) => page.messages) ?? [];
+  const allMessages = data?.pages.flatMap((page: any) => page.messages) ?? [];
 
   return {
     messages: allMessages,

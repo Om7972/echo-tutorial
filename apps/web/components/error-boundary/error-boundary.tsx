@@ -181,7 +181,7 @@ function ErrorFallbackUI({
             onClick={onToggleDetails}
             className="error-boundary-btn error-boundary-btn--ghost"
             type="button"
-            aria-expanded={showDetails}
+            aria-expanded={showDetails ? "true" : "false"}
           >
             {showDetails ? (
               <ChevronUp className="error-boundary-btn-icon" aria-hidden="true" />

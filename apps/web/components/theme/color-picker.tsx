@@ -39,7 +39,7 @@ export function ColorPicker({ showLabels = false }: { showLabels?: boolean }) {
             id={`theme-color-${c}`}
             onClick={() => setColor(c)}
             title={COLOR_LABELS[c]}
-            aria-pressed={isActive}
+            aria-pressed={isActive ? "true" : "false"}
             className="group relative flex items-center gap-2 transition-transform duration-150 hover:scale-105 active:scale-95"
           >
             {/* Swatch circle */}

@@ -50,6 +50,7 @@ export function ThemePanel() {
             <button
               onClick={() => setOpen(false)}
               className="w-6 h-6 rounded-md hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              title="Close panel"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -141,7 +142,7 @@ function ColorSwatch({
     <button
       id={`theme-panel-color-${colorId}`}
       onClick={() => setColor(colorId as any)}
-      aria-pressed={isActive}
+      aria-pressed={isActive ? "true" : "false"}
       className={`
         flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left
         border transition-all duration-200

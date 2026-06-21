@@ -9,7 +9,7 @@ export const listConversations = query({
     isArchived: v.optional(v.boolean()),
     search: v.optional(v.string()),
     priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
-    assigneeId: v.optional(v.string()),
+    assigneeId: v.optional(v.union(v.null(), v.string())),
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
@@ -24,7 +24,13 @@ export const listConversations = query({
       if (args.status !== undefined && c.status !== args.status) return false;
       if (args.isArchived !== undefined && c.isArchived !== args.isArchived) return false;
       if (args.priority !== undefined && c.priority !== args.priority) return false;
-      if (args.assigneeId !== undefined && c.assigneeId !== args.assigneeId) return false;
+      if (args.assigneeId !== undefined) {
+        if (args.assigneeId === null) {
+          if (c.assigneeId !== undefined && c.assigneeId !== null) return false;
+        } else {
+          if (c.assigneeId !== args.assigneeId) return false;
+        }
+      }
       if (args.tags && args.tags.length > 0) {
         const hasAllTags = args.tags.every((tag) => c.tags?.includes(tag));
         if (!hasAllTags) return false;
@@ -106,7 +112,7 @@ export const getMessagesPaginated = query({
     const hasMore = endIndex < allMessages.length;
     let nextCursor: string | null = null;
     if (hasMore && messages.length > 0) {
-      const firstMessage = messages[0];
+      const firstMessage = messages[0]!;
       nextCursor = JSON.stringify({
         timestamp: firstMessage.timestamp,
         _id: firstMessage._id,
@@ -378,7 +384,7 @@ export const pinMessage = mutation({
       .withIndex("by_message_id", (q) => q.eq("messageId", args.messageId))
       .collect();
     if (existing.length > 0) {
-      return existing[0]._id;
+      return existing[0]!._id;
     }
 
     return await ctx.db.insert("pinned_messages", {
@@ -425,7 +431,7 @@ export const addReaction = mutation({
       .filter((q) => q.eq(q.field("emoji"), args.emoji))
       .collect();
     if (existing.length > 0) {
-      return existing[0]._id;
+      return existing[0]!._id;
     }
 
     return await ctx.db.insert("message_reactions", {
@@ -498,11 +504,11 @@ export const updateTypingStatus = mutation({
       .collect();
 
     if (existing.length > 0) {
-      await ctx.db.patch(existing[0]._id, {
+      await ctx.db.patch(existing[0]!._id, {
         isTyping: args.isTyping,
         lastUpdatedAt: now,
       });
-      return existing[0]._id;
+      return existing[0]!._id;
     } else {
       return await ctx.db.insert("typing_statuses", {
         conversationId: args.conversationId,

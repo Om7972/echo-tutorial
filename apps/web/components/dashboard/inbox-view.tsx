@@ -129,6 +129,7 @@ export function InboxView() {
                     toggleStar(msg.id)
                   }}
                   className="mt-1"
+                  title="Star message"
                 >
                   <Star
                     className={`h-4.5 w-4.5 ${
@@ -170,6 +171,7 @@ export function InboxView() {
                     e.stopPropagation()
                     deleteMessage(msg.id)
                   }}
+                  title="Delete message"
                   className="opacity-0 group-hover:opacity-100 hover:text-rose-400 transition-opacity p-1 text-slate-500"
                 >
                   <Trash2 className="h-4 w-4" />

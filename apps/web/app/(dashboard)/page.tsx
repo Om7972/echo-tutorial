@@ -271,6 +271,7 @@ export default function DashboardPage() {
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => handleTabChange(item.id)}
+                        title={item.label}
                         className={`w-full h-11 flex items-center justify-center rounded-xl transition-all ${
                           isSelected
                             ? "bg-blue-600 text-white shadow-md shadow-blue-500/15"
@@ -320,8 +321,9 @@ export default function DashboardPage() {
                 <span>Press [ to collapse</span>
               </div>
             )}
-            <button
+             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              title="Toggle Sidebar"
               className="w-8 h-8 rounded-lg border border-white/5 hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-slate-200 mx-auto"
             >
               {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -339,7 +341,7 @@ export default function DashboardPage() {
               {/* MOBILE SIDEBAR SHEET TRIGGER */}
               <Sheet>
                 <SheetTrigger asChild>
-                  <button className="md:hidden p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-slate-200">
+                  <button title="Open Menu" className="md:hidden p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-slate-200">
                     <Menu className="h-5 w-5" />
                   </button>
                 </SheetTrigger>
@@ -415,7 +417,7 @@ export default function DashboardPage() {
               {/* NOTIFICATIONS BELL */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="relative w-8.5 h-8.5 rounded-lg border border-white/5 hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-slate-200 transition-all">
+                  <button title="Notifications" className="relative w-8.5 h-8.5 rounded-lg border border-white/5 hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-slate-200 transition-all">
                     <Bell className="w-4 h-4" />
                     {unreadNotifications > 0 && (
                       <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
@@ -454,7 +456,7 @@ export default function DashboardPage() {
               {/* PROFILE DROPDOWN */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 p-0.5 rounded-full border border-white/10 hover:border-white/20 transition-all">
+                  <button title="Profile Settings" className="flex items-center gap-2 p-0.5 rounded-full border border-white/10 hover:border-white/20 transition-all">
                     <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs select-none">
                       {user?.username?.charAt(0).toUpperCase() || "O"}
                     </div>

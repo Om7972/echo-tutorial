@@ -82,7 +82,7 @@ export function ConversationsView() {
   const [msgSearch, setMsgSearch] = useState("");
   const [selectedConversationIds, setSelectedConversationIds] = useState<string[]>([]);
   const [priorityFilter, setPriorityFilter] = useState<Priority | undefined>();
-  const [assigneeFilter, setAssigneeFilter] = useState<string | undefined>();
+  const [assigneeFilter, setAssigneeFilter] = useState<string | null | undefined>();
   const [tagFilters, setTagFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [showCustomerSidebar, setShowCustomerSidebar] = useState(false);
@@ -164,7 +164,7 @@ export function ConversationsView() {
   // Automatically select first conversation if none is active
   useEffect(() => {
     if (allConversations && allConversations.length > 0 && !activeId) {
-      setActiveId(allConversations[0]._id);
+      setActiveId(allConversations[0]!._id);
     }
   }, [allConversations, activeId]);
 
@@ -394,22 +394,25 @@ export function ConversationsView() {
                   <button
                     onClick={() => setReplyToMessage(m)}
                     className="p-1 hover:bg-white/10 rounded"
+                    title="Reply"
                   >
                     <MessageSquare className="w-3 h-3" />
                   </button>
                   <button
                     onClick={() => handleToggleMessagePin(m)}
                     className="p-1 hover:bg-white/10 rounded"
+                    title="Pin Message"
                   >
                     {isPinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
                   </button>
                   <button
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                     className="p-1 hover:bg-white/10 rounded"
+                    title="Add Reaction"
                   >
                     <Smile className="w-3 h-3" />
                   </button>
-                  <button className="p-1 hover:bg-white/10 rounded">
+                  <button className="p-1 hover:bg-white/10 rounded" title="More Actions">
                     <MoreVertical className="w-3 h-3" />
                   </button>
                 </div>
@@ -457,7 +460,7 @@ export function ConversationsView() {
   const renderConversationItem = (c: any) => {
     const isSelected = selectedConversationIds.includes(c._id);
     const isActive = activeId === c._id;
-    const priorityColors = {
+    const priorityColors: Record<string, string> = {
       high: "bg-red-500/10 text-red-400 border-red-500/20",
       medium: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
       low: "bg-green-500/10 text-green-400 border-green-500/20",
@@ -771,6 +774,7 @@ export function ConversationsView() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleTogglePin}
+                    title="Pin Conversation"
                     className={`p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer ${
                       activeSession.isPinned ? "bg-blue-600/20 text-blue-400" : ""
                     }`}
@@ -819,6 +823,7 @@ export function ConversationsView() {
                   </button>
                   <button
                     onClick={() => setShowCustomerSidebar(!showCustomerSidebar)}
+                    title="Toggle Sidebar"
                     className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white"
                   >
                     <Sidebar className="w-3.5 h-3.5" />
@@ -993,15 +998,16 @@ export function ConversationsView() {
                 >
                   <StickyNote className="w-3.5 h-3.5" />
                 </button>
-                <button className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white">
+                 <button className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white" title="Attach Files">
                   <Paperclip className="w-3.5 h-3.5" />
                 </button>
-                <button className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white">
+                <button className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white" title="Voice Note">
                   <Mic className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white"
+                  title="Emoji Keyboard"
                 >
                   <Smile className="w-3.5 h-3.5" />
                 </button>
@@ -1029,6 +1035,7 @@ export function ConversationsView() {
                     <button
                       onClick={handleSendMessage}
                       disabled={!input.trim()}
+                      title="Send Message"
                       className="w-8 h-8 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-lg flex items-center justify-center transition-colors cursor-pointer"
                     >
                       <Send className="w-3.5 h-3.5" />

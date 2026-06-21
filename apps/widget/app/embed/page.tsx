@@ -222,6 +222,7 @@ function WidgetEmbedContent() {
           >
             <button
               onClick={() => setState("opened")}
+              title="Open support chat"
               className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 ${currentTheme.primary} ${currentTheme.glow}`}
             >
               <MessageCircle className="w-6 h-6 animate-pulse" />
@@ -248,12 +249,14 @@ function WidgetEmbedContent() {
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setState("opened")}
+                  title="Maximize chat"
                   className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200"
                 >
                   <ChevronUp className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setState("closed")}
+                  title="Close chat"
                   className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200"
                 >
                   <X className="w-4 h-4" />
@@ -290,12 +293,14 @@ function WidgetEmbedContent() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setState("minimized")}
+                  title="Minimize chat"
                   className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setState("closed")}
+                  title="Close chat"
                   className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors"
                 >
                   <X className="w-4 h-4" />

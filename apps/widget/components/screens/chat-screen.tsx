@@ -39,6 +39,7 @@ export function ChatScreen({
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-3 shrink-0">
         <button
           onClick={pop}
+          title="Go back"
           className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -121,10 +122,12 @@ export function ChatScreen({
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSend(inputText);
           }}
+          title="Ask support"
           className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-slate-300 dark:focus:border-slate-700"
         />
         <button
           onClick={() => handleSend(inputText)}
+          title="Send message"
           className={`w-9 h-9 text-white rounded-xl flex items-center justify-center transition-transform active:scale-95 ${currentTheme.primary}`}
         >
           <Send className="w-4 h-4" />

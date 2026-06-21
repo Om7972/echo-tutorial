@@ -55,6 +55,7 @@ export function VoiceScreen({ currentTheme }: VoiceScreenProps) {
         <button
           onClick={pop}
           disabled={callState === "active" || callState === "connecting"}
+          title="Go back"
           className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors disabled:opacity-20"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -155,6 +156,7 @@ export function VoiceScreen({ currentTheme }: VoiceScreenProps) {
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setIsMuted((prev) => !prev)}
+                  title={isMuted ? "Unmute microphone" : "Mute microphone"}
                   className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all cursor-pointer ${
                     isMuted
                       ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
@@ -165,6 +167,7 @@ export function VoiceScreen({ currentTheme }: VoiceScreenProps) {
                 </button>
                 <button
                   onClick={handleEndCall}
+                  title="End Call"
                   className="w-12 h-12 rounded-2xl bg-red-600 hover:bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-500/20 transition-transform active:scale-95 cursor-pointer"
                 >
                   <PhoneOff className="w-5 h-5" />

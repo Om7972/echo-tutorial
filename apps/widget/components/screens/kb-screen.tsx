@@ -59,6 +59,7 @@ export function KbScreen({ currentTheme }: KbScreenProps) {
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-3 shrink-0">
         <button
           onClick={pop}
+          title="Go back"
           className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -76,6 +77,7 @@ export function KbScreen({ currentTheme }: KbScreenProps) {
           placeholder="Search articles..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          title="Search help articles"
           className="flex-1 bg-transparent text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none"
         />
       </div>
@@ -129,6 +131,7 @@ export function KbScreen({ currentTheme }: KbScreenProps) {
               </div>
               <button
                 onClick={() => setSelectedArticle(null)}
+                title="Close article"
                 className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-850 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
               >
                 <X className="w-4 h-4" />

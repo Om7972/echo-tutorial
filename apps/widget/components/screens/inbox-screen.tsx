@@ -153,6 +153,7 @@ export function InboxScreen({ currentTheme, messages }: InboxScreenProps) {
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-3 shrink-0">
         <button
           onClick={pop}
+          title="Go back"
           className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -171,6 +172,7 @@ export function InboxScreen({ currentTheme, messages }: InboxScreenProps) {
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            title="Search conversations"
             className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
           />
         </div>
@@ -244,6 +246,7 @@ export function InboxScreen({ currentTheme, messages }: InboxScreenProps) {
                           e.stopPropagation();
                           setContextMenuId(contextMenuId === conv.id ? null : conv.id);
                         }}
+                        title="More options"
                         className="p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
                       >
                         <MoreHorizontal className="w-3 h-3" />

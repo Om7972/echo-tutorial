@@ -29,17 +29,19 @@ export function SettingsView() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Organization Name</label>
+              <label htmlFor="orgName" className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Organization Name</label>
               <input
+                id="orgName"
                 type="text"
+                placeholder="Organization Name"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
                 className="w-full pl-3.5 pr-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-xs text-slate-200 focus:outline-none"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">System Timezone</label>
-              <select className="w-full px-3 py-2 bg-slate-900 border border-white/5 rounded-xl text-xs text-slate-200 focus:outline-none">
+              <label htmlFor="timezone" className="text-[10px] uppercase font-bold tracking-wider text-slate-500">System Timezone</label>
+              <select id="timezone" title="System Timezone" className="w-full px-3 py-2 bg-slate-900 border border-white/5 rounded-xl text-xs text-slate-200 focus:outline-none">
                 <option>UTC (Coordinated Universal Time)</option>
                 <option>EST (Eastern Standard Time)</option>
                 <option>PST (Pacific Standard Time)</option>
@@ -57,9 +59,11 @@ export function SettingsView() {
 
           <div className="space-y-3.5">
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Vapi webhook endpoint</label>
+              <label htmlFor="webhook" className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Vapi webhook endpoint</label>
               <input
+                id="webhook"
                 type="text"
+                placeholder="Webhook URL"
                 value={webhook}
                 onChange={(e) => setWebhook(e.target.value)}
                 className="w-full pl-3.5 pr-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-xs text-slate-200 focus:outline-none"
@@ -67,16 +71,19 @@ export function SettingsView() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Echo developer secret key</label>
+              <label htmlFor="apiKey" className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Echo developer secret key</label>
               <div className="relative">
                 <input
+                  id="apiKey"
                   type={showKey ? "text" : "password"}
+                  placeholder="API Key"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   className="w-full pl-3.5 pr-10 py-2 bg-slate-900 border border-white/5 rounded-xl text-xs text-slate-200 focus:outline-none"
                 />
                 <button
                   onClick={() => setShowKey(!showKey)}
+                  title={showKey ? "Hide Key" : "Show Key"}
                   className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200"
                 >
                   {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
