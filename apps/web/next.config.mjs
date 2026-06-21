@@ -3,10 +3,6 @@ import { withSentryConfig } from "@sentry/nextjs";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@workspace/ui"],
-  // Required for instrumentation.ts to be loaded by Next.js 15
-  experimental: {
-    instrumentationHook: true,
-  },
 };
 
 const sentryWebpackPluginOptions = {
