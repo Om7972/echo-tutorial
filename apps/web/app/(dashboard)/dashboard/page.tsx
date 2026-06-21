@@ -387,7 +387,7 @@ export default function DashboardPage() {
                   <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/5 hover:bg-white/5 transition-colors text-xs font-semibold text-slate-200">
                     <Building className="w-3.5 h-3.5 text-blue-400" />
                     <span>{org}</span>
-                    <ChevronRight className="w-3 h-3 rotate-90 text-slate-500" />
+                    <ChevronRight className="w-3.5 h-3.5 rotate-90 text-slate-500" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-48 bg-slate-900 border border-white/10 text-slate-200">
