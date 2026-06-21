@@ -26,8 +26,6 @@ import {
   Settings,
   Menu,
   Bell,
-  Sun,
-  Moon,
   ChevronLeft,
   ChevronRight,
   Shield,
@@ -36,6 +34,7 @@ import {
   Building,
   CheckCircle,
 } from "lucide-react"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 
 // Import views
 import { InboxView } from "@/components/dashboard/inbox-view"
@@ -107,7 +106,6 @@ export default function DashboardPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [org, setOrg] = useState("Acme Labs Inc.")
-  const [theme, setTheme] = useState<"dark" | "light">("dark")
   const [unreadNotifications, setUnreadNotifications] = useState(3)
 
   // Ref to track keyboard sequence
@@ -121,18 +119,6 @@ export default function DashboardPage() {
       setIsLoading(false)
     }, 450)
     return () => clearTimeout(timer)
-  }
-
-  // Toggle Dark Mode
-  const toggleTheme = () => {
-    const nextTheme = theme === "dark" ? "light" : "dark"
-    setTheme(nextTheme)
-    const root = window.document.documentElement
-    if (nextTheme === "dark") {
-      root.classList.add("dark")
-    } else {
-      root.classList.remove("dark")
-    }
   }
 
   // Handle Keyboard Shortcuts
@@ -208,10 +194,7 @@ export default function DashboardPage() {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, []);
 
-  // Theme Sync on Mount
-  useEffect(() => {
-    window.document.documentElement.classList.add("dark")
-  }, [])
+  // Theme is managed by ThemeProvider — no manual sync needed here
 
   // Render view template depending on selected tab
   const renderActiveView = () => {
@@ -426,13 +409,8 @@ export default function DashboardPage() {
             {/* RIGHT HEADER ACTIONS */}
             <div className="flex items-center gap-3">
               
-              {/* THEME TOGGLE */}
-              <button
-                onClick={toggleTheme}
-                className="w-8.5 h-8.5 rounded-lg border border-white/5 hover:bg-white/5 flex items-center justify-center text-slate-400 hover:text-slate-200 transition-all"
-              >
-                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
+              {/* THEME TOGGLE (wired to global ThemeEngine) */}
+              <ThemeToggle compact />
 
               {/* NOTIFICATIONS BELL */}
               <DropdownMenu>

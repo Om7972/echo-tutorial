@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import "@workspace/ui/globals.css"
 import { Providers } from "@/components/providers"
 import { LogsPanel } from "@/components/logs-panel"
+import { ThemePanel } from "@/components/theme/theme-panel"
 
 const fontSans = Geist({
   subsets: ["latin"],
@@ -23,11 +24,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased `}
+        className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased`}
       >
         <ClerkProvider>
           <Providers>
             {children}
+            {/* Floating theme picker — available on every surface */}
+            <ThemePanel />
           </Providers>
         </ClerkProvider>
 
