@@ -110,6 +110,11 @@ export default defineSchema({
     lastMessageText: v.string(),
     lastMessageTimestamp: v.number(),
     createdAt: v.number(),
+    // New fields for operator dashboard
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    tags: v.array(v.string()),
+    assigneeId: v.optional(v.string()), // User ID or "team" or null (unassigned)
+    slaDeadline: v.optional(v.number()), // Unix timestamp for SLA
   })
     .index("by_org_id", ["orgId"])
     .index("by_status", ["status"])
@@ -117,7 +122,9 @@ export default defineSchema({
     .index("by_pinned", ["isPinned"])
     .index("by_org_status", ["orgId", "status"])
     .index("by_org_archived", ["orgId", "isArchived"])
-    .index("by_org_pinned", ["orgId", "isPinned"]),
+    .index("by_org_pinned", ["orgId", "isPinned"])
+    .index("by_org_priority", ["orgId", "priority"])
+    .index("by_org_assignee", ["orgId", "assigneeId"]),
 
   messages: defineTable({
     conversationId: v.id("conversations"),

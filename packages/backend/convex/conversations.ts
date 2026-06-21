@@ -8,6 +8,9 @@ export const listConversations = query({
     status: v.optional(v.union(v.literal("active"), v.literal("resolved"), v.literal("waiting"))),
     isArchived: v.optional(v.boolean()),
     search: v.optional(v.string()),
+    priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
+    assigneeId: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     let q = ctx.db
@@ -16,10 +19,16 @@ export const listConversations = query({
 
     let conversations = await q.collect();
 
-    // Perform filter match on status, archive state
-    conversations = conversations.filter((c) => {
+    // Perform filter match on status, archive state, priority, assignee, tags
+    conversations = conversations.filter((c: any) => {
       if (args.status !== undefined && c.status !== args.status) return false;
       if (args.isArchived !== undefined && c.isArchived !== args.isArchived) return false;
+      if (args.priority !== undefined && c.priority !== args.priority) return false;
+      if (args.assigneeId !== undefined && c.assigneeId !== args.assigneeId) return false;
+      if (args.tags && args.tags.length > 0) {
+        const hasAllTags = args.tags.every(tag => c.tags?.includes(tag));
+        if (!hasAllTags) return false;
+      }
       
       // Apply search filter if provided
       if (args.search) {
@@ -30,10 +39,14 @@ export const listConversations = query({
       return true;
     });
 
-    // Sort: pinned first, then by last message timestamp descending
-    return conversations.sort((a, b) => {
-      if ((a as any).isPinned && !(b as any).isPinned) return -1;
-      if (!(a as any).isPinned && (b as any).isPinned) return 1;
+    // Sort: pinned first, then by priority (high > medium > low), then by last message timestamp descending
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    return conversations.sort((a: any, b: any) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      if (a.priority !== b.priority) {
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      }
       return b.lastMessageTimestamp - a.lastMessageTimestamp;
     });
   },
@@ -69,7 +82,7 @@ export const getMessagesPaginated = query({
   args: {
     conversationId: v.id("conversations"),
     limit: v.number(),
-    cursor: v.optional(v.string()), // Base64 encoded timestamp and _id
+    cursor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     let query = ctx.db
@@ -101,13 +114,13 @@ export const getMessagesPaginated = query({
     const hasMore = rawMessages.length === args.limit;
     
     // Create next cursor (from first message in the current batch)
-    let nextCursor: string | null = null
+    let nextCursor: string | null = null;
     if (hasMore && messages.length > 0) {
-      const firstMessage = messages[0]
+      const firstMessage = messages[0];
       nextCursor = Buffer.from(JSON.stringify({
         timestamp: firstMessage.timestamp,
         _id: firstMessage._id
-      })).toString("base64")
+      })).toString("base64");
     }
 
     return {
@@ -126,6 +139,9 @@ export const createConversation = mutation({
     senderId: v.string(),
     senderName: v.string(),
     senderType: v.union(v.literal("user"), v.literal("assistant"), v.literal("visitor")),
+    priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
+    tags: v.optional(v.array(v.string())),
+    assigneeId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -135,9 +151,14 @@ export const createConversation = mutation({
       orgId: args.orgId,
       status: "active",
       isArchived: false,
+      isPinned: false,
       lastMessageText: args.initialMessage,
       lastMessageTimestamp: now,
       createdAt: now,
+      priority: args.priority || "medium",
+      tags: args.tags || [],
+      assigneeId: args.assigneeId,
+      slaDeadline: args.priority === "high" ? now + 3600000 : args.priority === "medium" ? now + 7200000 : now + 14400000, // 1h, 2h, 4h
     });
 
     // 2. Insert initial message
@@ -229,14 +250,49 @@ export const updateConversationStatus = mutation({
     status: v.optional(v.union(v.literal("active"), v.literal("resolved"), v.literal("waiting"))),
     isArchived: v.optional(v.boolean()),
     isPinned: v.optional(v.boolean()),
+    priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
+    tags: v.optional(v.array(v.string())),
+    assigneeId: v.optional(v.string()),
+    slaDeadline: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const patches: Record<string, any> = {};
     if (args.status !== undefined) patches.status = args.status;
     if (args.isArchived !== undefined) patches.isArchived = args.isArchived;
     if (args.isPinned !== undefined) patches.isPinned = args.isPinned;
+    if (args.priority !== undefined) patches.priority = args.priority;
+    if (args.tags !== undefined) patches.tags = args.tags;
+    if (args.assigneeId !== undefined) patches.assigneeId = args.assigneeId;
+    if (args.slaDeadline !== undefined) patches.slaDeadline = args.slaDeadline;
 
     await ctx.db.patch(args.conversationId, patches);
+    return true;
+  },
+});
+
+// ─── Mutation: Bulk Update Conversations ──────────────────────────────────────
+export const bulkUpdateConversations = mutation({
+  args: {
+    conversationIds: v.array(v.id("conversations")),
+    status: v.optional(v.union(v.literal("active"), v.literal("resolved"), v.literal("waiting"))),
+    isArchived: v.optional(v.boolean()),
+    isPinned: v.optional(v.boolean()),
+    priority: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
+    tags: v.optional(v.array(v.string())),
+    assigneeId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const patches: Record<string, any> = {};
+    if (args.status !== undefined) patches.status = args.status;
+    if (args.isArchived !== undefined) patches.isArchived = args.isArchived;
+    if (args.isPinned !== undefined) patches.isPinned = args.isPinned;
+    if (args.priority !== undefined) patches.priority = args.priority;
+    if (args.tags !== undefined) patches.tags = args.tags;
+    if (args.assigneeId !== undefined) patches.assigneeId = args.assigneeId;
+
+    for (const id of args.conversationIds) {
+      await ctx.db.patch(id, patches);
+    }
     return true;
   },
 });
