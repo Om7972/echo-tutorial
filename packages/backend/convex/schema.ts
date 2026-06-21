@@ -100,4 +100,41 @@ export default defineSchema({
   })
     .index("by_session_id", ["sessionId"])
     .index("by_timestamp", ["timestamp"]),
+
+  // ─── Platform Conversations Engine ──────────────────────────────────────────
+  conversations: defineTable({
+    orgId: v.string(),
+    status: v.union(v.literal("active"), v.literal("resolved"), v.literal("waiting")),
+    isArchived: v.boolean(),
+    lastMessageText: v.string(),
+    lastMessageTimestamp: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_status", ["status"])
+    .index("by_archived", ["isArchived"])
+    .index("by_org_status", ["orgId", "status"]),
+
+  messages: defineTable({
+    conversationId: v.id("conversations"),
+    senderId: v.string(),
+    senderName: v.string(),
+    senderType: v.union(v.literal("user"), v.literal("assistant"), v.literal("visitor")),
+    type: v.union(v.literal("text"), v.literal("image"), v.literal("voice"), v.literal("system")),
+    content: v.string(),
+    status: v.union(v.literal("pending"), v.literal("sent"), v.literal("delivered"), v.literal("read")),
+    timestamp: v.number(),
+  })
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_timestamp", ["timestamp"]),
+
+  participants: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.string(),
+    role: v.union(v.literal("agent"), v.literal("visitor")),
+    joinedAt: v.number(),
+  })
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_user_id", ["userId"])
+    .index("by_conversation_user", ["conversationId", "userId"]),
 });

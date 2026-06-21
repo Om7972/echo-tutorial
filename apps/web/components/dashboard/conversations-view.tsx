@@ -1,203 +1,373 @@
 "use client"
 
-import { useState } from "react"
-import { Send, User, Bot, Search } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useQuery, useMutation } from "convex/react"
+import { api } from "@workspace/backend/_generated/api"
+import {
+  Send,
+  User,
+  Bot,
+  Search,
+  Check,
+  CheckCheck,
+  Archive,
+  Inbox,
+  CheckCircle,
+  Clock,
+  ArchiveX,
+} from "lucide-react"
 
-interface ChatMessage {
-  sender: "user" | "assistant"
-  text: string
-  time: string
-}
-
-interface ChatSession {
-  id: string
-  name: string
-  avatar: string
-  lastMsg: string
-  active: boolean
-  messages: ChatMessage[]
-}
-
-const mockSessions: ChatSession[] = [
-  {
-    id: "1",
-    name: "Acme Corp Admin",
-    avatar: "A",
-    lastMsg: "Will check the dashboard logs right now.",
-    active: true,
-    messages: [
-      { sender: "user", text: "Hey! Can we look into connecting the Vapi widget?", time: "10:30 AM" },
-      { sender: "assistant", text: "Sure! Let me fetch your Vapi public key variables from the config.", time: "10:31 AM" },
-      { sender: "user", text: "Great, let me know if you need help.", time: "10:32 AM" },
-      { sender: "assistant", text: "Will check the dashboard logs right now.", time: "10:33 AM" },
-    ],
-  },
-  {
-    id: "2",
-    name: "FinTech Integration Support",
-    avatar: "F",
-    lastMsg: "Let's schedule a call tomorrow afternoon.",
-    active: false,
-    messages: [
-      { sender: "user", text: "Hello team, we are facing 401 unauthenticated errors on webhook callbacks.", time: "Yesterday" },
-      { sender: "assistant", text: "Let's schedule a call tomorrow afternoon.", time: "Yesterday" },
-    ],
-  },
-]
+type FilterStatus = "active" | "resolved" | "waiting" | "all"
 
 export function ConversationsView() {
-  const [sessions, setSessions] = useState<ChatSession[]>(mockSessions)
-  const [activeId, setActiveId] = useState("1")
+  const [activeFilter, setActiveFilter] = useState<FilterStatus>("active")
+  const [showArchived, setShowArchived] = useState(false)
+  const [search, setSearch] = useState("")
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [input, setInput] = useState("")
+  const [msgSearch, setMsgSearch] = useState("")
 
-  const activeSession = sessions.find((s) => s.id === activeId) || sessions[0]!
+  // Org context (simulated in page layout)
+  const orgId = "acme"
 
-  const handleSendMessage = () => {
-    if (!input.trim()) return
+  // Convex Queries
+  const allConversations = useQuery(api.conversations.listConversations, {
+    orgId,
+    status: activeFilter === "all" ? undefined : activeFilter,
+    isArchived: showArchived,
+  })
 
-    const newMsg: ChatMessage = {
-      sender: "user",
-      text: input,
-      time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+  const messages = useQuery(
+    api.conversations.getConversationMessages,
+    activeId
+      ? {
+          conversationId: activeId as any,
+          searchQuery: msgSearch || undefined,
+        }
+      : "skip"
+  )
+
+  // Convex Mutations
+  const sendNewMessage = useMutation(api.conversations.postMessage)
+  const markMessagesAsRead = useMutation(api.conversations.markAsRead)
+  const updateConversationStatus = useMutation(api.conversations.updateConversationStatus)
+  const startNewConversation = useMutation(api.conversations.createConversation)
+
+  // Automatically select first conversation if none is active
+  useEffect(() => {
+    if (allConversations && allConversations.length > 0 && !activeId) {
+      setActiveId(allConversations[0]._id)
     }
+  }, [allConversations, activeId])
 
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === activeId
-          ? {
-              ...s,
-              lastMsg: input,
-              messages: [...s.messages, newMsg],
-            }
-          : s
-      )
-    )
+  // Mark messages as read when active conversation switches or updates
+  useEffect(() => {
+    if (activeId) {
+      markMessagesAsRead({
+        conversationId: activeId as any,
+        userId: "agent_1", // Simulated logged in agent ID
+      })
+    }
+  }, [activeId, messages?.length, markMessagesAsRead])
+
+  const handleSendMessage = async () => {
+    if (!input.trim() || !activeId) return
+
+    await sendNewMessage({
+      conversationId: activeId as any,
+      senderId: "agent_1",
+      senderName: "Support Agent",
+      senderType: "user",
+      type: "text",
+      content: input,
+    })
+
     setInput("")
+  };
 
-    // Simple auto-reply after 1.5s
-    setTimeout(() => {
-      const replyMsg: ChatMessage = {
-        sender: "assistant",
-        text: "Thanks for the message! Our AI agents are currently compiling your request details.",
-        time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-      }
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === activeId
-            ? {
-                ...s,
-                lastMsg: replyMsg.text,
-                messages: [...s.messages, replyMsg],
-              }
-            : s
-        )
-      )
-    }, 1500)
-  }
+  const handleStatusChange = async (status: "active" | "resolved" | "waiting") => {
+    if (!activeId) return
+    await updateConversationStatus({
+      conversationId: activeId as any,
+      status,
+    })
+  };
+
+  const handleArchiveToggle = async () => {
+    if (!activeId) return
+    const activeConv = allConversations?.find((c: any) => c._id === activeId)
+    if (!activeConv) return
+
+    await updateConversationStatus({
+      conversationId: activeId as any,
+      isArchived: !activeConv.isArchived,
+    })
+    
+    // Deselect conversation since it moved to/from archive list
+    setActiveId(null)
+  };
+
+  const handleCreateMockConversation = async () => {
+    const randomNames = ["Devon Lane", "Jenny Wilson", "Kristin Watson", "Bessie Cooper"];
+    const name = randomNames[Math.floor(Math.random() * randomNames.length)]!;
+    
+    await startNewConversation({
+      orgId,
+      initialMessage: "Hello! I have a question about setting up custom integrations.",
+      senderId: `vis_${Math.random().toString(36).substring(2, 9)}`,
+      senderName: name,
+      senderType: "visitor",
+    })
+  };
+
+  const activeSession = allConversations?.find((s: any) => s._id === activeId)
+
+  // Filter conversations locally based on search term
+  const filteredConversations = allConversations?.filter((c: any) =>
+    c.lastMessageText.toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[500px]">
-      {/* Session List */}
-      <div className="border border-white/5 rounded-2xl bg-slate-950/20 flex flex-col overflow-hidden">
-        <div className="p-3 border-b border-white/5 bg-slate-950/40">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[550px]">
+      
+      {/* ─── Session List Pane ─── */}
+      <div className="border border-white/5 rounded-2xl bg-slate-900/20 backdrop-blur-sm flex flex-col overflow-hidden">
+        
+        {/* Search & Actions Header */}
+        <div className="p-3 border-b border-white/5 space-y-2">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={handleCreateMockConversation}
+              className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white font-bold px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+            >
+              + Create Mock Chat
+            </button>
+            <button
+              onClick={() => setShowArchived((prev) => !prev)}
+              className={`text-[10px] flex items-center gap-1 font-bold px-2.5 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+                showArchived
+                  ? "bg-purple-600/10 border-purple-500 text-purple-400"
+                  : "bg-slate-900 border-white/5 text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Archive className="w-3 h-3" /> {showArchived ? "Archived" : "Inbox"}
+            </button>
+          </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-500" />
             <input
               type="text"
-              placeholder="Search chat list..."
-              className="w-full pl-8 pr-3 py-1.5 bg-slate-900 border border-white/5 rounded-xl text-xs placeholder-slate-500 focus:outline-none"
+              placeholder="Search chats..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 bg-slate-900 border border-white/5 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-white/10"
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto divide-y divide-white/5">
-          {sessions.map((s) => (
-            <div
-              key={s.id}
-              onClick={() => setActiveId(s.id)}
-              className={`p-3.5 flex items-center gap-3 cursor-pointer transition-colors ${
-                activeId === s.id ? "bg-blue-600/10 border-r-2 border-blue-500" : "hover:bg-white/5"
+        {/* Filters Tabs */}
+        <div className="flex border-b border-white/5 text-[10px] font-bold text-slate-400">
+          {(["active", "waiting", "resolved", "all"] as FilterStatus[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setActiveFilter(f)}
+              className={`flex-1 py-2 text-center border-b-2 capitalize transition-colors cursor-pointer ${
+                activeFilter === f
+                  ? "border-blue-500 text-blue-400 bg-blue-500/5"
+                  : "border-transparent hover:text-slate-200"
               }`}
             >
-              <div className="w-9 h-9 rounded-xl bg-slate-800 border border-white/5 flex items-center justify-center font-bold text-slate-300">
-                {s.avatar}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex justify-between items-baseline mb-0.5">
-                  <h4 className="text-xs font-semibold text-slate-200 truncate">{s.name}</h4>
+              {f}
+            </button>
+          ))}
+        </div>
+
+        {/* Chat List list */}
+        <div className="flex-1 overflow-y-auto divide-y divide-white/5 bg-slate-950/40">
+          {filteredConversations && filteredConversations.length > 0 ? (
+            filteredConversations.map((s: any) => (
+              <div
+                key={s._id}
+                onClick={() => setActiveId(s._id)}
+                className={`p-3.5 flex items-center gap-3 cursor-pointer transition-all ${
+                  activeId === s._id
+                    ? "bg-blue-600/10 border-r-2 border-blue-500"
+                    : "hover:bg-white/5"
+                }`}
+              >
+                <div className="w-9 h-9 rounded-xl bg-slate-800 border border-white/5 flex items-center justify-center font-bold text-slate-300">
+                  {s.status === "active" ? "A" : s.status === "waiting" ? "W" : "R"}
                 </div>
-                <p className="text-[11px] text-slate-500 truncate">{s.lastMsg}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex justify-between items-baseline mb-0.5">
+                    <h4 className="text-xs font-semibold text-slate-200 truncate">
+                      Chat session ({s.status})
+                    </h4>
+                  </div>
+                  <p className="text-[10px] text-slate-500 truncate">{s.lastMessageText}</p>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="text-center py-16 text-xs text-slate-500">
+              No conversations found.
             </div>
-          ))}
+          )}
         </div>
       </div>
 
-      {/* Active Conversation Window */}
-      <div className="md:col-span-2 border border-white/5 rounded-2xl bg-slate-950/20 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/40">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/5 flex items-center justify-center font-bold text-slate-200">
-              {activeSession.avatar}
+      {/* ─── Active Conversation View Pane ─── */}
+      <div className="md:col-span-2 border border-white/5 rounded-2xl bg-slate-900/20 backdrop-blur-sm flex flex-col overflow-hidden">
+        {activeSession ? (
+          <>
+            {/* Header bar */}
+            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/40">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/5 flex items-center justify-center font-bold text-slate-200">
+                  {activeSession.status === "active" ? "A" : "R"}
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-100">
+                    Session ({activeSession.status})
+                  </h3>
+                  <span className="text-[9px] text-slate-400 font-semibold mt-0.5 block">
+                    ID: {activeSession._id}
+                  </span>
+                </div>
+              </div>
+
+              {/* Status Controls & Archive */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center rounded-lg border border-white/5 overflow-hidden">
+                  <button
+                    onClick={() => handleStatusChange("active")}
+                    title="Mark Active"
+                    className={`p-1.5 hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer ${
+                      activeSession.status === "active" ? "bg-blue-600/20 text-blue-400" : ""
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleStatusChange("resolved")}
+                    title="Mark Resolved"
+                    className={`p-1.5 hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer ${
+                      activeSession.status === "resolved" ? "bg-emerald-600/20 text-emerald-400" : ""
+                    }`}
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleArchiveToggle}
+                  title={activeSession.isArchived ? "Unarchive" : "Archive"}
+                  className={`p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer ${
+                    activeSession.isArchived ? "bg-purple-600/20 text-purple-400" : ""
+                  }`}
+                >
+                  {activeSession.isArchived ? (
+                    <ArchiveX className="w-3.5 h-3.5" />
+                  ) : (
+                    <Archive className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xs font-bold text-slate-100">{activeSession.name}</h3>
-              <span className="text-[10px] text-emerald-400 font-medium">● Connected</span>
+
+            {/* Inner Message Search Bar */}
+            <div className="p-2 border-b border-white/5 bg-slate-950/20 flex items-center gap-1.5">
+              <Search className="w-3 h-3 text-slate-500 ml-1.5" />
+              <input
+                type="text"
+                placeholder="Search messages..."
+                value={msgSearch}
+                onChange={(e) => setMsgSearch(e.target.value)}
+                className="flex-1 bg-transparent text-[10px] text-slate-200 placeholder-slate-500 focus:outline-none"
+              />
             </div>
+
+            {/* Message History streams */}
+            <div className="flex-1 p-4 space-y-3.5 overflow-y-auto bg-slate-950/20">
+              {messages && messages.length > 0 ? (
+                messages.map((m: any) => {
+                  const isAgent = m.senderType === "user"
+                  return (
+                    <div
+                      key={m._id}
+                      className={`flex gap-3 text-xs leading-relaxed max-w-[80%] ${
+                        isAgent ? "ml-auto flex-row-reverse" : "mr-auto"
+                      }`}
+                    >
+                      <div
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ${
+                          isAgent ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-350"
+                        }`}
+                      >
+                        {isAgent ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
+                      </div>
+                      <div
+                        className={`px-3.5 py-2.5 rounded-2xl ${
+                          isAgent
+                            ? "bg-blue-600/10 border border-blue-500/20 text-slate-200 rounded-tr-none"
+                            : "bg-slate-900/60 border border-white/5 text-slate-300 rounded-tl-none"
+                        }`}
+                      >
+                        <p>{m.content}</p>
+                        
+                        {/* Status checks */}
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                          <span className="text-[9px] text-slate-500">
+                            {new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          {isAgent && (
+                            <span>
+                              {m.status === "read" ? (
+                                <CheckCheck className="w-3 h-3 text-blue-500" />
+                              ) : (
+                                <Check className="w-3 h-3 text-slate-500" />
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="text-center py-20 text-xs text-slate-500">
+                  No messages found.
+                </div>
+              )}
+            </div>
+
+            {/* Input Bar */}
+            <div className="p-3 border-t border-white/5 flex gap-2 bg-slate-950/40">
+              <input
+                type="text"
+                placeholder="Type your message..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSendMessage()
+                }}
+                className="flex-1 pl-3.5 pr-4 py-2 bg-slate-900/60 border border-white/5 rounded-xl text-xs text-slate-250 placeholder-slate-500 focus:outline-none focus:border-blue-500/50"
+              />
+              <button
+                onClick={handleSendMessage}
+                className="w-10 h-10 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-slate-500 text-xs">
+            No active session selected. Select a chat or create a mock conversation above.
           </div>
-        </div>
-
-        {/* Message History */}
-        <div className="flex-1 p-4 space-y-3.5 overflow-y-auto">
-          {activeSession.messages.map((m, i) => (
-            <div
-              key={i}
-              className={`flex gap-3 text-xs leading-relaxed max-w-[80%] ${
-                m.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
-              }`}
-            >
-              <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ${
-                  m.sender === "user" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-300"
-                }`}
-              >
-                {m.sender === "user" ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
-              </div>
-              <div
-                className={`px-3.5 py-2.5 rounded-2xl ${
-                  m.sender === "user"
-                    ? "bg-blue-600/10 border border-blue-500/20 text-slate-200 rounded-tr-none"
-                    : "bg-slate-900/60 border border-white/5 text-slate-300 rounded-tl-none"
-                }`}
-              >
-                <p>{m.text}</p>
-                <span className="text-[9px] text-slate-500 block text-right mt-1">{m.time}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Input Bar */}
-        <div className="p-3 border-t border-white/5 flex gap-2 bg-slate-950/40">
-          <input
-            type="text"
-            placeholder="Type your message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSendMessage()
-            }}
-            className="flex-1 pl-3.5 pr-4 py-2 bg-slate-900/60 border border-white/5 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50"
-          />
-          <button
-            onClick={handleSendMessage}
-            className="w-10 h-10 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center transition-colors"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
+        )}
       </div>
+
     </div>
   )
 }
