@@ -4,18 +4,36 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Minus, ChevronUp } from "lucide-react";
+import dynamic from "next/dynamic";
 
 // Imports from local folders
 import { WidgetRouterProvider, useWidgetRouter } from "../../hooks/use-widget-router";
 import { useWidgetSession } from "../../hooks/use-widget-session";
 
-// Screens
-import { HomeScreen } from "../../components/screens/home-screen";
-import { InboxScreen } from "../../components/screens/inbox-screen";
-import { ChatScreen } from "../../components/screens/chat-screen";
-import { KbScreen } from "../../components/screens/kb-screen";
-import { VoiceScreen } from "../../components/screens/voice-screen";
-import { HandoffScreen } from "../../components/screens/handoff-screen";
+// Fallback skeleton components
+import { HomeScreenSkeleton, ChatMessagesSkeleton } from "../../components/skeleton";
+import { ErrorBoundary } from "../../components/error-boundary";
+import { ConnectionStatus } from "../../components/connection-status";
+
+// Dynamic lazy loaded screen components
+const HomeScreen = dynamic(() => import("../../components/screens/home-screen").then(mod => mod.HomeScreen), {
+  loading: () => <HomeScreenSkeleton />,
+});
+const InboxScreen = dynamic(() => import("../../components/screens/inbox-screen").then(mod => mod.InboxScreen), {
+  loading: () => <HomeScreenSkeleton />,
+});
+const ChatScreen = dynamic(() => import("../../components/screens/chat-screen").then(mod => mod.ChatScreen), {
+  loading: () => <ChatMessagesSkeleton />,
+});
+const KbScreen = dynamic(() => import("../../components/screens/kb-screen").then(mod => mod.KbScreen), {
+  loading: () => <HomeScreenSkeleton />,
+});
+const VoiceScreen = dynamic(() => import("../../components/screens/voice-screen").then(mod => mod.VoiceScreen), {
+  loading: () => <HomeScreenSkeleton />,
+});
+const HandoffScreen = dynamic(() => import("../../components/screens/handoff-screen").then(mod => mod.HandoffScreen), {
+  loading: () => <HomeScreenSkeleton />,
+});
 
 const GREETING_TEXT = "Hi there! 👋 Welcome to Echo support. Ask us anything about integration, billing, or custom agents.";
 
@@ -42,7 +60,7 @@ function WidgetEmbedContent() {
   const [isAgentTyping, setIsAgentTyping] = useState(false);
 
   // Router context hook
-  const { currentScreen, pop } = useWidgetRouter();
+  const { currentScreen } = useWidgetRouter();
 
   // Session & Message sync hook
   const {
@@ -159,12 +177,7 @@ function WidgetEmbedContent() {
   const renderScreen = () => {
     switch (currentScreen) {
       case "loading":
-        return (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-3 bg-white dark:bg-slate-950">
-            <span className="w-6 h-6 rounded-full border-2 border-slate-350 border-t-slate-700 animate-spin" />
-            <span className="text-[10px] text-slate-400 font-semibold tracking-wide">Loading workspace...</span>
-          </div>
-        );
+        return <HomeScreenSkeleton />;
       case "home":
         return <HomeScreen currentTheme={currentTheme} logoUrl={logoUrl} orgId={orgId} />;
       case "inbox":
@@ -290,6 +303,9 @@ function WidgetEmbedContent() {
               </div>
             </div>
 
+            {/* Online/Offline Connection Status banner */}
+            <ConnectionStatus />
+
             {/* Screen Transitions Area */}
             <div className="flex-1 flex flex-col overflow-hidden relative">
               <AnimatePresence mode="wait">
@@ -301,7 +317,9 @@ function WidgetEmbedContent() {
                   transition={{ duration: 0.18 }}
                   className="flex-1 flex flex-col overflow-hidden"
                 >
-                  {renderScreen()}
+                  <ErrorBoundary>
+                    {renderScreen()}
+                  </ErrorBoundary>
                 </motion.div>
               </AnimatePresence>
             </div>
