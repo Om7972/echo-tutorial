@@ -4,5 +4,6 @@
   "graalvm.installations": [
     ""
   ],
-  "netbeans.jdkhome": ""
+  "netbeans.jdkhome": "",
+  "kiroAgent.configureMCP": "Disabled"
 }

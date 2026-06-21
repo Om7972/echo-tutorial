@@ -33,6 +33,7 @@ import {
   Keyboard,
   Building,
   CheckCircle,
+  Terminal,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 
@@ -45,6 +46,7 @@ import { AnalyticsView } from "@/components/dashboard/analytics-view"
 import { TeamView } from "@/components/dashboard/team-view"
 import { BillingView } from "@/components/dashboard/billing-view"
 import { SettingsView } from "@/components/dashboard/settings-view"
+import { DeveloperView } from "@/components/dashboard/developer-view"
 
 // Import skeletons
 import { TableSkeleton, GridSkeleton, ChatSkeleton } from "@/components/dashboard/loading-skeletons"
@@ -79,6 +81,7 @@ type ActiveTab =
   | "team"
   | "billing"
   | "settings"
+  | "developer"
 
 interface SidebarItem {
   id: ActiveTab
@@ -95,6 +98,7 @@ const sidebarItems: SidebarItem[] = [
   { id: "analytics", label: "Analytics", icon: BarChart3, shortcut: "G + Y" },
   { id: "team", label: "Team", icon: Users, shortcut: "G + T" },
   { id: "billing", label: "Billing", icon: CreditCard, shortcut: "G + B" },
+  { id: "developer", label: "Dev Portal", icon: Terminal, shortcut: "G + D" },
   { id: "settings", label: "Settings", icon: Settings, shortcut: "G + S" },
 ]
 
@@ -167,6 +171,9 @@ export default function DashboardPage() {
           case "b":
             handleTabChange("billing")
             break
+          case "d":
+            handleTabChange("developer")
+            break
           case "s":
             handleTabChange("settings")
             break
@@ -202,7 +209,7 @@ export default function DashboardPage() {
       if (activeTab === "inbox" || activeTab === "kb" || activeTab === "team" || activeTab === "billing") {
         return <TableSkeleton />
       }
-      if (activeTab === "agents" || activeTab === "analytics") {
+      if (activeTab === "agents" || activeTab === "analytics" || activeTab === "developer") {
         return <GridSkeleton />
       }
       if (activeTab === "conversations") {
@@ -228,6 +235,8 @@ export default function DashboardPage() {
         return <BillingView />
       case "settings":
         return <SettingsView />
+      case "developer":
+        return <DeveloperView />
       default:
         return <InboxView />
     }

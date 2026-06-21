@@ -79,6 +79,7 @@ export class AIAgentOrchestrator {
 
   // Handle execution of tools
   private async executeTool(name: string, argsStr: string, session: AISessionMetadata): Promise<string> {
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || "");
     try {
       const args = JSON.parse(argsStr);
       logger.info(`Agent calling tool [${name}] with arguments: ${argsStr}`);
@@ -86,13 +87,22 @@ export class AIAgentOrchestrator {
       switch (name) {
         case "resolve_ticket":
           return `[System Tool Output] Conversation #${session.conversationId} status marked as RESOLVED. Details: ${args.reason}`;
-        case "handoff_to_human":
+        case "handoff_to_human": {
+          try {
+            await convex.mutation(api.escalation.escalateConversation, {
+              conversationId: session.conversationId as any,
+              reason: "low_confidence",
+              priority: args.priority === "high" ? "high" : args.priority === "low" ? "low" : "medium",
+            });
+          } catch (err) {
+            logger.error(`Failed to trigger handoff mutation inside tool: ${err}`);
+          }
           return `[System Tool Output] Transferred client successfully to human agent. Wait queue time: ~2 mins. Priority: ${args.priority}`;
+        }
         case "search_knowledge_base": {
           const queryText = args.query;
           const orgId = session.orgId;
           
-          const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || "");
           const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" });
           
           let queryEmbedding: number[] = [];

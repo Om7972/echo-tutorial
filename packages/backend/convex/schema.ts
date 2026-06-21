@@ -101,7 +101,6 @@ export default defineSchema({
     .index("by_session_id", ["sessionId"])
     .index("by_timestamp", ["timestamp"]),
 
-  // ─── Platform Conversations Engine ─────────────────────────────────────────
   conversations: defineTable({
     orgId: v.string(),
     status: v.union(v.literal("active"), v.literal("resolved"), v.literal("waiting")),
@@ -110,11 +109,21 @@ export default defineSchema({
     lastMessageText: v.string(),
     lastMessageTimestamp: v.number(),
     createdAt: v.number(),
-    // New fields for operator dashboard
     priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
     tags: v.array(v.string()),
     assigneeId: v.optional(v.string()), // User ID or "team" or null (unassigned)
     slaDeadline: v.optional(v.number()), // Unix timestamp for SLA
+    isLocked: v.optional(v.boolean()),
+    lockedBy: v.optional(v.string()),
+    lockedAt: v.optional(v.number()),
+    escalationReason: v.optional(v.string()),
+    escalatedAt: v.optional(v.number()),
+    firstResponseTimeMs: v.optional(v.number()),
+    resolutionTimeMs: v.optional(v.number()),
+    csatScore: v.optional(v.number()),
+    isResolvedByAI: v.optional(v.boolean()),
+    tokensUsed: v.optional(v.number()),
+    costUSD: v.optional(v.number()),
   })
     .index("by_org_id", ["orgId"])
     .index("by_status", ["status"])
@@ -377,4 +386,40 @@ export default defineSchema({
   })
     .index("by_org_id", ["orgId"])
     .index("by_document_id", ["documentId"]),
+
+  transfer_history: defineTable({
+    orgId: v.string(),
+    conversationId: v.id("conversations"),
+    fromAssignee: v.optional(v.string()),
+    toAssignee: v.string(),
+    transferredBy: v.string(),
+    reason: v.optional(v.string()),
+    timestamp: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"]),
+
+  notifications: defineTable({
+    orgId: v.string(),
+    userId: v.optional(v.string()),
+    title: v.string(),
+    message: v.string(),
+    conversationId: v.id("conversations"),
+    type: v.union(v.literal("escalation"), v.literal("transfer"), v.literal("mention")),
+    isRead: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_user_id", ["userId"])
+    .index("by_user_read", ["userId", "isRead"]),
+
+  audit_logs: defineTable({
+    orgId: v.string(),
+    userId: v.string(),
+    action: v.string(),
+    details: v.string(),
+    timestamp: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_org_date", ["orgId", "timestamp"]),
 });

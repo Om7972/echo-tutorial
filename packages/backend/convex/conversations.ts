@@ -289,6 +289,103 @@ export const postMessage = mutation({
       lastMessageTimestamp: now,
     });
 
+    // 3. Automated Escalation Check (Only check if posted by visitor and not already locked/escalated)
+    const conv = await ctx.db.get(args.conversationId);
+    if (conv && args.senderType === "visitor" && !conv.isLocked && !conv.escalationReason) {
+      let shouldEscalate = false;
+      let reason = "";
+      let priority: "low" | "medium" | "high" = "medium";
+
+      // A. VIP Customer Check
+      const profile = await ctx.db
+        .query("customer_profiles")
+        .withIndex("by_org_visitor", (q) => q.eq("orgId", conv.orgId).eq("visitorId", args.senderId))
+        .unique();
+      
+      const isVip = 
+        profile?.notes?.toLowerCase().includes("vip") || 
+        profile?.name?.toLowerCase().includes("vip") || 
+        args.senderId.toLowerCase().includes("vip");
+
+      if (isVip) {
+        shouldEscalate = true;
+        reason = "vip_customer";
+        priority = "high";
+      }
+
+      // B. Negative Sentiment Check
+      if (!shouldEscalate) {
+        const negativeKeywords = [
+          "angry", "terrible", "worst", "hate", "scam", "broken", "useless", 
+          "refund", "chargeback", "cancel", "frustrated", "awful", "horrible",
+          "human", "operator", "agent", "real person", "representative", "help"
+        ];
+        const lowerContent = args.content.toLowerCase();
+        const hasNegativeWord = negativeKeywords.some((word) => lowerContent.includes(word));
+        
+        if (hasNegativeWord) {
+          shouldEscalate = true;
+          reason = "negative_sentiment";
+          priority = "high";
+        }
+      }
+
+      if (shouldEscalate) {
+        // Lock conversation and update status
+        await ctx.db.patch(args.conversationId, {
+          status: "waiting",
+          priority,
+          isLocked: true,
+          lockedAt: now,
+          escalationReason: reason,
+          escalatedAt: now,
+        });
+
+        // Insert Transfer History
+        await ctx.db.insert("transfer_history", {
+          orgId: conv.orgId,
+          conversationId: args.conversationId,
+          fromAssignee: "ai",
+          toAssignee: "operator_queue",
+          transferredBy: "system",
+          reason: `Auto-escalated: ${reason}`,
+          timestamp: now,
+        });
+
+        // Create Notification
+        await ctx.db.insert("notifications", {
+          orgId: conv.orgId,
+          title: "Escalation Alert",
+          message: `Conversation escalated due to ${reason.replace("_", " ")}.`,
+          conversationId: args.conversationId,
+          type: "escalation",
+          isRead: false,
+          createdAt: now,
+        });
+
+        // Log Audit Event
+        await ctx.db.insert("audit_logs", {
+          orgId: conv.orgId,
+          userId: "system",
+          action: "auto_escalate",
+          details: `Conversation auto-escalated to support queue. Trigger: ${reason}`,
+          timestamp: now,
+        });
+
+        // Inject system message in conversation
+        await ctx.db.insert("messages", {
+          conversationId: args.conversationId,
+          senderId: "system",
+          senderName: "System",
+          senderType: "assistant",
+          type: "system",
+          content: `[System] This conversation has been escalated to our human support queue due to: ${reason.replace("_", " ")}.`,
+          status: "sent",
+          timestamp: now,
+        });
+      }
+    }
+
     return messageId;
   },
 });

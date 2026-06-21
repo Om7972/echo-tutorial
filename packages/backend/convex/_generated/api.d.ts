@@ -14,7 +14,9 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as aiFunctions from "../aiFunctions.js";
+import type * as analytics from "../analytics.js";
 import type * as conversations from "../conversations.js";
+import type * as escalation from "../escalation.js";
 import type * as functionCalling from "../functionCalling.js";
 import type * as kb from "../kb.js";
 import type * as users from "../users.js";
@@ -32,7 +34,9 @@ import type * as widget from "../widget.js";
  */
 declare const fullApi: ApiFromModules<{
   aiFunctions: typeof aiFunctions;
+  analytics: typeof analytics;
   conversations: typeof conversations;
+  escalation: typeof escalation;
   functionCalling: typeof functionCalling;
   kb: typeof kb;
   users: typeof users;

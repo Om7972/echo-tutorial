@@ -21,6 +21,7 @@ import {
   X,
   ChevronDown,
   AlertCircle,
+  Bell,
   Plus,
   Paperclip,
   Mic,
@@ -88,6 +89,7 @@ export function ConversationsView() {
   const [showCustomerSidebar, setShowCustomerSidebar] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<any>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [isInternalNoteMode, setIsInternalNoteMode] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
 
@@ -145,6 +147,22 @@ export function ConversationsView() {
     { orgId }
   );
 
+  // Escalation System Queries
+  const transferHistory = useQuery(
+    api.escalation.getTransferHistory,
+    activeId ? { conversationId: activeId as any } : "skip"
+  );
+
+  const auditLogs = useQuery(
+    api.escalation.getAuditLogs,
+    { orgId }
+  );
+
+  const notifications = useQuery(
+    api.escalation.listNotifications,
+    { orgId }
+  );
+
   // Determine which messages to show
   const displayMessages = msgSearch ? searchMessages : messages;
 
@@ -153,6 +171,11 @@ export function ConversationsView() {
   const markAsRead = useMutation(api.conversations.markAsRead);
   const updateConversationStatus = useMutation(api.conversations.updateConversationStatus);
   const startNewConversation = useMutation(api.conversations.createConversation);
+
+  // Escalation System Mutations
+  const takeoverConversation = useMutation(api.escalation.takeoverConversation);
+  const releaseTakeover = useMutation(api.escalation.releaseTakeover);
+  const markNotificationAsRead = useMutation(api.escalation.markNotificationAsRead);
   const bulkUpdateConversations = useMutation(api.conversations.bulkUpdateConversations);
   const pinMessage = useMutation(api.conversations.pinMessage);
   const unpinMessage = useMutation(api.conversations.unpinMessage);
@@ -553,23 +576,82 @@ export function ConversationsView() {
       <div className="md:col-span-3 border border-white/5 rounded-2xl bg-slate-900/20 backdrop-blur-sm flex flex-col overflow-hidden">
         {/* Search & Actions Header */}
         <div className="p-3 border-b border-white/5 space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-1.5 relative">
             <button
               onClick={handleCreateMockConversation}
               className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white font-bold px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
             >
               <Plus className="w-2.5 h-2.5" /> New Chat
             </button>
-            <button
-              onClick={() => setShowArchived((prev) => !prev)}
-              className={`text-[10px] flex items-center gap-1 font-bold px-2.5 py-1.5 rounded-lg border transition-colors cursor-pointer ${
-                showArchived
-                  ? "bg-purple-600/10 border-purple-500 text-purple-400"
-                  : "bg-slate-900 border-white/5 text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <Archive className="w-3 h-3" /> {showArchived ? "Archived" : "Inbox"}
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowArchived((prev) => !prev)}
+                className={`text-[10px] flex items-center gap-1 font-bold px-2.5 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+                  showArchived
+                    ? "bg-purple-600/10 border-purple-500 text-purple-400"
+                    : "bg-slate-900 border-white/5 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <Archive className="w-3 h-3" /> {showArchived ? "Archived" : "Inbox"}
+              </button>
+              
+              {/* Notification bell */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className={`p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer relative ${
+                    showNotifications ? "bg-blue-600/20 text-blue-400" : ""
+                  }`}
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  {notifications && notifications.filter((n: any) => !n.isRead).length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                  )}
+                </button>
+
+                {showNotifications && (
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-slate-950/95 border border-white/10 rounded-xl shadow-2xl p-2 z-50 space-y-1.5 backdrop-blur-md">
+                    <div className="text-[10px] font-bold text-slate-400 px-2 py-1 uppercase tracking-wider border-b border-white/5 flex justify-between items-center">
+                      <span>Notifications</span>
+                      {notifications && notifications.filter((n: any) => !n.isRead).length > 0 && (
+                        <span className="text-[9px] bg-red-500/10 text-red-400 px-1 py-0.5 rounded font-semibold">
+                          {notifications.filter((n: any) => !n.isRead).length} New
+                        </span>
+                      )}
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {notifications && notifications.length > 0 ? (
+                        notifications.map((n: any) => (
+                          <button
+                            key={n._id}
+                            onClick={async () => {
+                              await markNotificationAsRead({ notificationId: n._id });
+                              if (n.conversationId) {
+                                setActiveId(n.conversationId);
+                              }
+                              setShowNotifications(false);
+                            }}
+                            className={`w-full text-left p-2 rounded-lg transition-colors text-[10px] flex flex-col gap-0.5 ${
+                              n.isRead ? "hover:bg-white/5 text-slate-400" : "bg-blue-500/5 hover:bg-blue-500/10 text-slate-200 font-semibold"
+                            }`}
+                          >
+                            <span className="flex justify-between">
+                              <span className="truncate max-w-[150px]">{n.title}</span>
+                              <span className="text-[8px] text-slate-500">
+                                {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </span>
+                            <span className="text-[9px] text-slate-500 font-normal line-clamp-2">{n.message}</span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="text-center py-6 text-[10px] text-slate-500 italic">No notifications.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-500" />
@@ -761,8 +843,13 @@ export function ConversationsView() {
                     {activeSession.priority.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-slate-100">
+                    <h3 className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
                       Conversation #{activeSession._id.slice(-6)}
+                      {activeSession.escalationReason && (
+                        <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 font-bold uppercase tracking-wider">
+                          Escalated
+                        </span>
+                      )}
                     </h3>
                     <span className="text-[9px] text-slate-400 font-semibold mt-0.5 block">
                       Org: {activeSession.orgId}
@@ -772,6 +859,50 @@ export function ConversationsView() {
 
                 {/* Status Controls & Archive */}
                 <div className="flex items-center gap-2">
+                  {/* Lock/Takeover actions */}
+                  {activeSession.isLocked ? (
+                    activeSession.assigneeId === currentAgentId ? (
+                      <button
+                        onClick={async () => {
+                          await releaseTakeover({
+                            conversationId: activeSession._id,
+                            operatorId: currentAgentId,
+                            operatorName: currentAgentName,
+                          });
+                        }}
+                        className="text-[9px] bg-yellow-600/15 border border-yellow-500/30 hover:bg-yellow-600/25 text-yellow-400 font-bold px-2 py-1 rounded transition-colors cursor-pointer"
+                      >
+                        Release Lock
+                      </button>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          await takeoverConversation({
+                            conversationId: activeSession._id,
+                            operatorId: currentAgentId,
+                            operatorName: currentAgentName,
+                          });
+                        }}
+                        className="text-[9px] bg-red-600 hover:bg-red-500 text-white font-bold px-2 py-1 rounded transition-colors cursor-pointer"
+                      >
+                        Takeover
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        await takeoverConversation({
+                          conversationId: activeSession._id,
+                          operatorId: currentAgentId,
+                          operatorName: currentAgentName,
+                        });
+                      }}
+                      className="text-[9px] bg-blue-600 hover:bg-blue-500 text-white font-bold px-2 py-1 rounded transition-colors cursor-pointer"
+                    >
+                      Takeover
+                    </button>
+                  )}
+
                   <button
                     onClick={handleTogglePin}
                     title="Pin Conversation"
@@ -824,12 +955,29 @@ export function ConversationsView() {
                   <button
                     onClick={() => setShowCustomerSidebar(!showCustomerSidebar)}
                     title="Toggle Sidebar"
-                    className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white"
+                    className={`p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer ${
+                      showCustomerSidebar ? "bg-blue-600/20 text-blue-400" : ""
+                    }`}
                   >
                     <Sidebar className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
+
+              {/* Lock Warning Banner */}
+              {activeSession.isLocked && (
+                <div className="flex items-center justify-between text-[10px] px-2.5 py-1.5 rounded bg-amber-500/10 border border-amber-500/25 text-amber-300">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                    <span>
+                      Locked by <strong>{activeSession.lockedBy || "Queue"}</strong>. AI is paused.
+                      {activeSession.escalationReason && (
+                        <span> Trigger: <strong>{activeSession.escalationReason.replace("_", " ")}</strong>.</span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Conversation properties */}
               <div className="flex items-center gap-2 flex-wrap">
@@ -1124,21 +1272,47 @@ export function ConversationsView() {
               </div>
             </div>
 
-            {/* Activity */}
+            {/* Transfer History */}
             <div>
-              <h5 className="text-[10px] font-semibold text-slate-300 mb-2">Activity</h5>
-              <div className="space-y-2">
-                {[
-                  { action: "Opened conversation", time: "5 mins ago" },
-                  { action: "Viewed pricing page", time: "10 mins ago" },
-                  { action: "Visited homepage", time: "15 mins ago" },
-                ].map((activity, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                    <span className="text-slate-300">{activity.action}</span>
-                    <span className="text-slate-500 ml-auto">{activity.time}</span>
-                  </div>
-                ))}
+              <h5 className="text-[10px] font-semibold text-slate-300 mb-2 uppercase tracking-wider">Transfer History</h5>
+              <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                {transferHistory && transferHistory.length > 0 ? (
+                  transferHistory.map((th: any) => (
+                    <div key={th._id} className="text-[10px] text-slate-400 bg-slate-900/40 border border-white/5 p-2 rounded-lg space-y-1">
+                      <div className="flex justify-between items-center text-slate-300 font-medium">
+                        <span>{th.fromAssignee} → {th.toAssignee}</span>
+                        <span className="text-[9px] text-slate-500">
+                          {new Date(th.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-[9px] text-slate-500 italic">Reason: {th.reason}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-[10px] text-slate-500 italic">No transfers recorded.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Audit Logs */}
+            <div>
+              <h5 className="text-[10px] font-semibold text-slate-300 mb-2 uppercase tracking-wider">Audit Log</h5>
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {auditLogs && auditLogs.length > 0 ? (
+                  auditLogs.slice(0, 5).map((al: any) => (
+                    <div key={al._id} className="text-[10px] text-slate-400 bg-slate-900/40 border border-white/5 p-2 rounded-lg space-y-1">
+                      <div className="flex justify-between items-center text-slate-300 font-medium">
+                        <span className="uppercase text-[9px] bg-white/5 px-1 py-0.5 rounded text-slate-400">{al.action}</span>
+                        <span className="text-[9px] text-slate-500">
+                          {new Date(al.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-[9px] text-slate-500">{al.details}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-[10px] text-slate-500 italic">No system audits found.</div>
+                )}
               </div>
             </div>
           </div>
