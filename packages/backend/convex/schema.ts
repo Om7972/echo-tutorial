@@ -58,4 +58,46 @@ export default defineSchema({
     .index("by_session",      ["sessionId"])
     .index("by_user",         ["userId"])
     .index("by_session_role", ["sessionId", "role"]),
+
+  // ─── Support Widget Sessions ────────────────────────────────────────────────
+  widget_sessions: defineTable({
+    sessionId: v.string(),
+    visitorId: v.string(),
+    orgId: v.string(),
+    status: v.union(v.literal("active"), v.literal("expired")),
+    lastActiveAt: v.number(),
+    createdAt: v.number(),
+    browserInfo: v.object({
+      userAgent: v.string(),
+      language: v.string(),
+      screenResolution: v.string(),
+    }),
+    metadata: v.optional(v.string()),
+    typingStatus: v.union(v.literal("idle"), v.literal("typing")),
+  })
+    .index("by_session_id", ["sessionId"])
+    .index("by_visitor_id", ["visitorId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_status", ["status"]),
+
+  // ─── Visitor Profiles ───────────────────────────────────────────────────────
+  visitor_profiles: defineTable({
+    visitorId: v.string(),
+    firstSeenAt: v.number(),
+    lastSeenAt: v.number(),
+    userAgent: v.string(),
+    metadata: v.optional(v.string()),
+  })
+    .index("by_visitor_id", ["visitorId"]),
+
+  // ─── Widget Messages ────────────────────────────────────────────────────────
+  widget_messages: defineTable({
+    sessionId: v.string(),
+    sender: v.union(v.literal("user"), v.literal("assistant")),
+    text: v.string(),
+    time: v.string(),
+    timestamp: v.number(),
+  })
+    .index("by_session_id", ["sessionId"])
+    .index("by_timestamp", ["timestamp"]),
 });

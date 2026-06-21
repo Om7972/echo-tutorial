@@ -14,21 +14,17 @@ import {
   ChevronUp,
 } from "lucide-react";
 
+import { useWidgetSession } from "../../hooks/use-widget-session";
+
 interface Message {
-  id: string;
+  _id?: string;
+  id?: string;
   sender: "user" | "assistant";
   text: string;
   time: string;
 }
 
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: "1",
-    sender: "assistant",
-    text: "Hi there! 👋 Welcome to Echo support. Ask us anything about integration, billing, or custom agents.",
-    time: "Just now",
-  },
-];
+const GREETING_TEXT = "Hi there! 👋 Welcome to Echo support. Ask us anything about integration, billing, or custom agents.";
 
 const QUICK_REPLIES = [
   "How do I set up Vapi voice?",
@@ -48,10 +44,25 @@ function WidgetEmbedContent() {
   // Widget State: 'closed' | 'minimized' | 'opened'
   const [state, setState] = useState<"closed" | "minimized" | "opened">("closed");
   
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  // Input tracking
   const [inputText, setInputText] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [isAgentTyping, setIsAgentTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Hook for Convex Session & Messages
+  const {
+    messages,
+    sendMessage,
+    setTypingStatus,
+    isHydrated,
+  } = useWidgetSession(orgId);
+
+  // Seed greeting message if conversation is empty
+  useEffect(() => {
+    if (isHydrated && messages.length === 0) {
+      sendMessage(GREETING_TEXT, "assistant");
+    }
+  }, [isHydrated, messages.length, sendMessage]);
 
   // Set initial class on mount to support tailwind light/dark themes
   useEffect(() => {
@@ -73,7 +84,17 @@ function WidgetEmbedContent() {
   // Scroll to bottom when messages list updates
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
+  }, [messages, isAgentTyping]);
+
+  // Broadcast user typing status on input change
+  const handleInputChange = (val: string) => {
+    setInputText(val);
+    if (val.trim()) {
+      setTypingStatus("typing");
+    } else {
+      setTypingStatus("idle");
+    }
+  };
 
   // Theme color maps
   const colorMap: Record<string, { primary: string; text: string; bgLight: string; border: string; glow: string }> = {
@@ -121,20 +142,14 @@ function WidgetEmbedContent() {
   const handleSend = (text: string) => {
     if (!text.trim()) return;
 
-    const userMessage: Message = {
-      id: String(messages.length + 1),
-      sender: "user",
-      text,
-      time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    sendMessage(text, "user");
     setInputText("");
-    setIsTyping(true);
+    setTypingStatus("idle");
+    setIsAgentTyping(true);
 
     // Simulate agent replies after 1.5 seconds delay
     setTimeout(() => {
-      setIsTyping(false);
+      setIsAgentTyping(false);
       let replyText = "Thanks for asking! Our support representatives are currently processing your query.";
       const query = text.toLowerCase();
 
@@ -146,13 +161,7 @@ function WidgetEmbedContent() {
         replyText = "Average system response latency is around 320ms, optimized via pre-warmed edge tunnels and direct Convex subscriptions.";
       }
 
-      const assistantMessage: Message = {
-        id: String(messages.length + 2),
-        sender: "assistant",
-        text: replyText,
-        time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      sendMessage(replyText, "assistant");
     }, 1500);
   };
 
@@ -255,9 +264,9 @@ function WidgetEmbedContent() {
 
             {/* Messages Area */}
             <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-slate-50 dark:bg-slate-950/40">
-              {messages.map((m) => (
+              {messages.map((m: any) => (
                 <div
-                  key={m.id}
+                  key={m._id || m.id}
                   className={`flex gap-2 text-xs leading-relaxed max-w-[85%] ${
                     m.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
                   }`}
@@ -283,7 +292,7 @@ function WidgetEmbedContent() {
               ))}
 
               {/* Typing Indicator */}
-              {isTyping && (
+              {isAgentTyping && (
                 <div className="flex gap-2 items-center text-xs text-slate-400 mr-auto max-w-[80%]">
                   <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ${currentTheme.primary} text-white`}>
                     <Bot className="w-3.5 h-3.5" />
@@ -300,7 +309,7 @@ function WidgetEmbedContent() {
             </div>
 
             {/* Quick Replies */}
-            {messages.length === 1 && (
+            {messages.length <= 1 && (
               <div className="p-3 border-t border-slate-100 dark:border-slate-800/50 bg-slate-50 dark:bg-slate-950 flex flex-wrap gap-1.5 shrink-0">
                 {QUICK_REPLIES.map((reply, i) => (
                   <button
@@ -320,7 +329,7 @@ function WidgetEmbedContent() {
                 type="text"
                 placeholder="Ask support..."
                 value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
+                onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSend(inputText);
                 }}
