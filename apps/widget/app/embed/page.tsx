@@ -1,28 +1,21 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  MessageCircle,
-  X,
-  Minus,
-  Send,
-  Sparkles,
-  Bot,
-  ExternalLink,
-  ChevronUp,
-} from "lucide-react";
+import { MessageCircle, X, Minus, ChevronUp } from "lucide-react";
 
+// Imports from local folders
+import { WidgetRouterProvider, useWidgetRouter } from "../../hooks/use-widget-router";
 import { useWidgetSession } from "../../hooks/use-widget-session";
 
-interface Message {
-  _id?: string;
-  id?: string;
-  sender: "user" | "assistant";
-  text: string;
-  time: string;
-}
+// Screens
+import { HomeScreen } from "../../components/screens/home-screen";
+import { InboxScreen } from "../../components/screens/inbox-screen";
+import { ChatScreen } from "../../components/screens/chat-screen";
+import { KbScreen } from "../../components/screens/kb-screen";
+import { VoiceScreen } from "../../components/screens/voice-screen";
+import { HandoffScreen } from "../../components/screens/handoff-screen";
 
 const GREETING_TEXT = "Hi there! 👋 Welcome to Echo support. Ask us anything about integration, billing, or custom agents.";
 
@@ -41,15 +34,17 @@ function WidgetEmbedContent() {
   const themeMode = searchParams.get("theme") || "dark";   // light, dark
   const logoUrl = searchParams.get("logo") || "";
 
-  // Widget State: 'closed' | 'minimized' | 'opened'
+  // Widget Open State: 'closed' | 'minimized' | 'opened'
   const [state, setState] = useState<"closed" | "minimized" | "opened">("closed");
   
   // Input tracking
   const [inputText, setInputText] = useState("");
   const [isAgentTyping, setIsAgentTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Hook for Convex Session & Messages
+  // Router context hook
+  const { currentScreen, pop } = useWidgetRouter();
+
+  // Session & Message sync hook
   const {
     messages,
     sendMessage,
@@ -80,11 +75,6 @@ function WidgetEmbedContent() {
       window.parent.postMessage({ type: "widget:state", state }, "*");
     }
   }, [state]);
-
-  // Scroll to bottom when messages list updates
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isAgentTyping]);
 
   // Broadcast user typing status on input change
   const handleInputChange = (val: string) => {
@@ -165,6 +155,44 @@ function WidgetEmbedContent() {
     }, 1500);
   };
 
+  // Render current screen from stack router
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case "loading":
+        return (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-3 bg-white dark:bg-slate-950">
+            <span className="w-6 h-6 rounded-full border-2 border-slate-350 border-t-slate-700 animate-spin" />
+            <span className="text-[10px] text-slate-400 font-semibold tracking-wide">Loading workspace...</span>
+          </div>
+        );
+      case "home":
+        return <HomeScreen currentTheme={currentTheme} logoUrl={logoUrl} orgId={orgId} />;
+      case "inbox":
+        return <InboxScreen currentTheme={currentTheme} messages={messages} />;
+      case "chat":
+        return (
+          <ChatScreen
+            currentTheme={currentTheme}
+            messages={messages}
+            sendMessage={sendMessage}
+            isAgentTyping={isAgentTyping}
+            inputText={inputText}
+            handleInputChange={handleInputChange}
+            handleSend={handleSend}
+            QUICK_REPLIES={QUICK_REPLIES}
+          />
+        );
+      case "kb":
+        return <KbScreen currentTheme={currentTheme} />;
+      case "voice":
+        return <VoiceScreen currentTheme={currentTheme} />;
+      case "handoff":
+        return <HandoffScreen currentTheme={currentTheme} />;
+      default:
+        return <HomeScreen currentTheme={currentTheme} logoUrl={logoUrl} orgId={orgId} />;
+    }
+  };
+
   return (
     <div className="w-full h-full font-sans antialiased text-slate-800 dark:text-slate-200">
       <AnimatePresence mode="wait">
@@ -232,7 +260,7 @@ function WidgetEmbedContent() {
             transition={{ type: "spring", stiffness: 280, damping: 24 }}
             className="w-full h-full flex flex-col bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 sm:rounded-2xl shadow-xl overflow-hidden"
           >
-            {/* Header */}
+            {/* Main Header */}
             <div className={`p-4 text-white flex items-center justify-between shadow-sm shrink-0 ${currentTheme.primary}`}>
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center font-bold text-sm border border-white/10">
@@ -262,91 +290,20 @@ function WidgetEmbedContent() {
               </div>
             </div>
 
-            {/* Messages Area */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-slate-50 dark:bg-slate-950/40">
-              {messages.map((m: any) => (
-                <div
-                  key={m._id || m.id}
-                  className={`flex gap-2 text-xs leading-relaxed max-w-[85%] ${
-                    m.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
-                  }`}
+            {/* Screen Transitions Area */}
+            <div className="flex-1 flex flex-col overflow-hidden relative">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentScreen}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.18 }}
+                  className="flex-1 flex flex-col overflow-hidden"
                 >
-                  <div
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ${
-                      m.sender === "user" ? "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300" : `${currentTheme.primary} text-white`
-                    }`}
-                  >
-                    {m.sender === "user" ? "U" : <Bot className="w-3.5 h-3.5" />}
-                  </div>
-                  <div
-                    className={`px-3 py-2 rounded-2xl ${
-                      m.sender === "user"
-                        ? "bg-slate-200/80 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 rounded-tr-none"
-                        : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50 text-slate-800 dark:text-slate-200 rounded-tl-none"
-                    }`}
-                  >
-                    <p>{m.text}</p>
-                    <span className="text-[9px] text-slate-400 block text-right mt-1">{m.time}</span>
-                  </div>
-                </div>
-              ))}
-
-              {/* Typing Indicator */}
-              {isAgentTyping && (
-                <div className="flex gap-2 items-center text-xs text-slate-400 mr-auto max-w-[80%]">
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ${currentTheme.primary} text-white`}>
-                    <Bot className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="px-3 py-2.5 rounded-2xl rounded-tl-none bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
-                  </div>
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Quick Replies */}
-            {messages.length <= 1 && (
-              <div className="p-3 border-t border-slate-100 dark:border-slate-800/50 bg-slate-50 dark:bg-slate-950 flex flex-wrap gap-1.5 shrink-0">
-                {QUICK_REPLIES.map((reply, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSend(reply)}
-                    className={`text-[10px] font-semibold px-2.5 py-1.5 rounded-xl border transition-all text-left bg-white dark:bg-slate-900 hover:scale-98 cursor-pointer ${currentTheme.text} ${currentTheme.border} ${currentTheme.bgLight}`}
-                  >
-                    {reply}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Input Form */}
-            <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 flex gap-2 shrink-0 items-center">
-              <input
-                type="text"
-                placeholder="Ask support..."
-                value={inputText}
-                onChange={(e) => handleInputChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSend(inputText);
-                }}
-                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-slate-300 dark:focus:border-slate-700"
-              />
-              <button
-                onClick={() => handleSend(inputText)}
-                className={`w-9 h-9 text-white rounded-xl flex items-center justify-center transition-transform active:scale-95 ${currentTheme.primary}`}
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Footer Brand */}
-            <div className="p-2 border-t border-slate-100 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-950/80 text-center flex items-center justify-center gap-1 text-[9px] text-slate-400 font-medium shrink-0">
-              <span>Powered by Echo Support</span>
-              <ExternalLink className="w-2.5 h-2.5" />
+                  {renderScreen()}
+                </motion.div>
+              </AnimatePresence>
             </div>
 
           </motion.div>
@@ -359,7 +316,9 @@ function WidgetEmbedContent() {
 export default function WidgetEmbedPage() {
   return (
     <Suspense fallback={<div className="p-4 text-center text-xs text-slate-500">Loading Widget...</div>}>
-      <WidgetEmbedContent />
+      <WidgetRouterProvider>
+        <WidgetEmbedContent />
+      </WidgetRouterProvider>
     </Suspense>
   );
 }
