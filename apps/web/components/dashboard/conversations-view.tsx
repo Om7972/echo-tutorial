@@ -16,6 +16,9 @@ import {
   Clock,
   ArchiveX,
 } from "lucide-react"
+import { usePaginatedMessages } from "@/hooks/use-paginated-messages"
+import { VirtualizedInfiniteScroll } from "@workspace/ui/components/virtualized-infinite-scroll"
+// import { Id } from "@workspace/backend/convex/_generated/dataModel"
 
 type FilterStatus = "active" | "resolved" | "waiting" | "all"
 
@@ -37,15 +40,31 @@ export function ConversationsView() {
     isArchived: showArchived,
   })
 
-  const messages = useQuery(
+  // Use our new paginated messages hook
+  const { 
+    messages, 
+    loadPrevious, 
+    hasMorePrevious, 
+    isLoadingPrevious,
+    isLoading: isLoadingMessages
+  } = usePaginatedMessages({
+    conversationId: activeId,
+    enabled: !!activeId && !msgSearch,
+  })
+
+  // Fallback to search query when msgSearch is active
+  const searchMessages = useQuery(
     api.conversations.getConversationMessages,
-    activeId
+    activeId && msgSearch
       ? {
           conversationId: activeId as any,
-          searchQuery: msgSearch || undefined,
+          searchQuery: msgSearch,
         }
       : "skip"
   )
+
+  // Determine which messages to show
+  const displayMessages = msgSearch ? searchMessages : messages
 
   // Convex Mutations
   const sendNewMessage = useMutation(api.conversations.postMessage)
@@ -68,7 +87,7 @@ export function ConversationsView() {
         userId: "agent_1", // Simulated logged in agent ID
       })
     }
-  }, [activeId, messages?.length, markMessagesAsRead])
+  }, [activeId, displayMessages?.length, markMessagesAsRead])
 
   const handleSendMessage = async () => {
     if (!input.trim() || !activeId) return
@@ -126,6 +145,51 @@ export function ConversationsView() {
   const filteredConversations = allConversations?.filter((c: any) =>
     c.lastMessageText.toLowerCase().includes(search.toLowerCase())
   )
+
+  // Render function for individual messages
+  const renderMessage = (m: any) => {
+    const isAgent = m.senderType === "user"
+    return (
+      <div
+        className={`flex gap-3 text-xs leading-relaxed max-w-[80%] ${
+          isAgent ? "ml-auto flex-row-reverse" : "mr-auto"
+        }`}
+      >
+        <div
+          className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ${
+            isAgent ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-350"
+          }`}
+        >
+          {isAgent ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
+        </div>
+        <div
+          className={`px-3.5 py-2.5 rounded-2xl ${
+            isAgent
+              ? "bg-blue-600/10 border border-blue-500/20 text-slate-200 rounded-tr-none"
+              : "bg-slate-900/60 border border-white/5 text-slate-300 rounded-tl-none"
+          }`}
+        >
+          <p>{m.content}</p>
+          
+          {/* Status checks */}
+          <div className="flex items-center justify-end gap-1 mt-1">
+            <span className="text-[9px] text-slate-500">
+              {new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            {isAgent && (
+              <span>
+                {m.status === "read" ? (
+                  <CheckCheck className="w-3 h-3 text-blue-500" />
+                ) : (
+                  <Check className="w-3 h-3 text-slate-500" />
+                )}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[550px]">
@@ -288,54 +352,30 @@ export function ConversationsView() {
             </div>
 
             {/* Message History streams */}
-            <div className="flex-1 p-4 space-y-3.5 overflow-y-auto bg-slate-950/20">
-              {messages && messages.length > 0 ? (
-                messages.map((m: any) => {
-                  const isAgent = m.senderType === "user"
-                  return (
-                    <div
-                      key={m._id}
-                      className={`flex gap-3 text-xs leading-relaxed max-w-[80%] ${
-                        isAgent ? "ml-auto flex-row-reverse" : "mr-auto"
-                      }`}
-                    >
-                      <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ${
-                          isAgent ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-350"
-                        }`}
-                      >
-                        {isAgent ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
-                      </div>
-                      <div
-                        className={`px-3.5 py-2.5 rounded-2xl ${
-                          isAgent
-                            ? "bg-blue-600/10 border border-blue-500/20 text-slate-200 rounded-tr-none"
-                            : "bg-slate-900/60 border border-white/5 text-slate-300 rounded-tl-none"
-                        }`}
-                      >
-                        <p>{m.content}</p>
-                        
-                        {/* Status checks */}
-                        <div className="flex items-center justify-end gap-1 mt-1">
-                          <span className="text-[9px] text-slate-500">
-                            {new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                          {isAgent && (
-                            <span>
-                              {m.status === "read" ? (
-                                <CheckCheck className="w-3 h-3 text-blue-500" />
-                              ) : (
-                                <Check className="w-3 h-3 text-slate-500" />
-                              )}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })
+            <div className="flex-1 bg-slate-950/20">
+              {isLoadingMessages ? (
+                <div className="flex items-center justify-center h-full text-xs text-slate-500">
+                  Loading messages...
+                </div>
+              ) : displayMessages && displayMessages.length > 0 ? (
+                msgSearch ? (
+                  // For search results, use normal scroll
+                  <div className="p-4 space-y-3.5 overflow-y-auto h-full">
+                    {displayMessages.map((m: any) => renderMessage(m))}
+                  </div>
+                ) : (
+                  // For normal view, use virtualized infinite scroll
+                  <VirtualizedInfiniteScroll
+                    items={displayMessages}
+                    loadPrevious={loadPrevious}
+                    hasMorePrevious={hasMorePrevious}
+                    isLoadingPrevious={isLoadingPrevious}
+                    renderItem={renderMessage}
+                    autoScrollToBottom={true}
+                  />
+                )
               ) : (
-                <div className="text-center py-20 text-xs text-slate-500">
+                <div className="flex items-center justify-center h-full text-xs text-slate-500">
                   No messages found.
                 </div>
               )}

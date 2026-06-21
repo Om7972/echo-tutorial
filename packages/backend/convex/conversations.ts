@@ -51,6 +51,60 @@ export const getConversationMessages = query({
   },
 });
 
+// ─── Query: Cursor-based Pagination for Messages ──────────────────────────────
+export const getMessagesPaginated = query({
+  args: {
+    conversationId: v.id("conversations"),
+    limit: v.number(),
+    cursor: v.optional(v.string()), // Base64 encoded timestamp and _id
+  },
+  handler: async (ctx, args) => {
+    let query = ctx.db
+      .query("messages")
+      .withIndex("by_conversation_timestamp", (q) => 
+        q.eq("conversationId", args.conversationId)
+      );
+
+    // Apply cursor if present
+    if (args.cursor) {
+      const { timestamp, _id } = JSON.parse(Buffer.from(args.cursor, "base64").toString());
+      query = query.order("asc").filter((q) => 
+        q.or(
+          q.lt(q.field("timestamp"), timestamp),
+          q.and(q.eq(q.field("timestamp"), timestamp), q.lt(q.field("_id"), _id))
+        )
+      );
+    } else {
+      // No cursor: get latest messages first
+      query = query.order("desc");
+    }
+
+    const rawMessages = await query.take(args.limit);
+    
+    // If we took descending, reverse to get ascending order
+    let messages = args.cursor ? rawMessages : rawMessages.reverse();
+    
+    // Determine if there's a next page
+    const hasMore = rawMessages.length === args.limit;
+    
+    // Create next cursor (from first message in the current batch)
+    let nextCursor: string | null = null
+    if (hasMore && messages.length > 0) {
+      const firstMessage = messages[0]
+      nextCursor = Buffer.from(JSON.stringify({
+        timestamp: firstMessage.timestamp,
+        _id: firstMessage._id
+      })).toString("base64")
+    }
+
+    return {
+      messages,
+      nextCursor,
+      hasMore
+    };
+  },
+});
+
 // ─── Mutation: Create Conversation ───────────────────────────────────────────
 export const createConversation = mutation({
   args: {

@@ -126,7 +126,8 @@ export default defineSchema({
     timestamp: v.number(),
   })
     .index("by_conversation_id", ["conversationId"])
-    .index("by_timestamp", ["timestamp"]),
+    .index("by_timestamp", ["timestamp"])
+    .index("by_conversation_timestamp", ["conversationId", "timestamp"]),
 
   participants: defineTable({
     conversationId: v.id("conversations"),
