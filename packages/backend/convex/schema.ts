@@ -227,4 +227,94 @@ export default defineSchema({
     lastUpdatedAt: v.number(),
   })
     .index("by_conversation_id", ["conversationId"]),
+
+  // ─── AI Function Calling ────────────────────────────────────────────────────
+  tool_calls: defineTable({
+    orgId: v.string(),
+    conversationId: v.optional(v.id("conversations")),
+    messageId: v.optional(v.id("messages")),
+    userId: v.optional(v.string()),
+    toolName: v.string(),
+    arguments: v.optional(v.any()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("executing"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("fallback")
+    ),
+    provider: v.union(v.literal("openai"), v.literal("anthropic")),
+    model: v.string(),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    cost: v.optional(v.number()), // in USD cents
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_status", ["status"])
+    .index("by_tool_name", ["toolName"])
+    .index("by_org_date", ["orgId", "startedAt"]),
+
+  tool_results: defineTable({
+    toolCallId: v.id("tool_calls"),
+    orgId: v.string(),
+    conversationId: v.optional(v.id("conversations")),
+    toolName: v.string(),
+    result: v.any(),
+    success: v.boolean(),
+    error: v.optional(v.string()),
+    timestamp: v.number(),
+    executionTimeMs: v.optional(v.number()),
+  })
+    .index("by_tool_call_id", ["toolCallId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_org_date", ["orgId", "timestamp"]),
+
+  tool_audit_logs: defineTable({
+    orgId: v.string(),
+    conversationId: v.optional(v.id("conversations")),
+    toolCallId: v.optional(v.id("tool_calls")),
+    event: v.union(
+      v.literal("tool_call_initiated"),
+      v.literal("tool_validation_failed"),
+      v.literal("tool_execution_started"),
+      v.literal("tool_execution_completed"),
+      v.literal("tool_execution_failed"),
+      v.literal("fallback_triggered"),
+      v.literal("result_stored")
+    ),
+    details: v.optional(v.any()),
+    timestamp: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_tool_call_id", ["toolCallId"])
+    .index("by_event", ["event"]),
+
+  cost_metrics: defineTable({
+    orgId: v.string(),
+    date: v.string(), // ISO date (YYYY-MM-DD)
+    provider: v.union(v.literal("openai"), v.literal("anthropic")),
+    model: v.string(),
+    totalCost: v.number(), // in USD cents
+    totalCalls: v.number(),
+    lastUpdated: v.number(),
+  })
+    .index("by_org_date", ["orgId", "date"])
+    .index("by_org_provider", ["orgId", "provider"]),
+
+  // ─── Knowledge Base ─────────────────────────────────────────────────────────
+  knowledge_base: defineTable({
+    orgId: v.string(),
+    title: v.string(),
+    content: v.string(),
+    category: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    embedding: v.optional(v.array(v.number())),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_org_category", ["orgId", "category"]),
 });
