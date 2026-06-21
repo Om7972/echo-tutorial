@@ -101,11 +101,12 @@ export default defineSchema({
     .index("by_session_id", ["sessionId"])
     .index("by_timestamp", ["timestamp"]),
 
-  // ─── Platform Conversations Engine ──────────────────────────────────────────
+  // ─── Platform Conversations Engine ─────────────────────────────────────────
   conversations: defineTable({
     orgId: v.string(),
     status: v.union(v.literal("active"), v.literal("resolved"), v.literal("waiting")),
     isArchived: v.boolean(),
+    isPinned: v.boolean(),
     lastMessageText: v.string(),
     lastMessageTimestamp: v.number(),
     createdAt: v.number(),
@@ -113,7 +114,10 @@ export default defineSchema({
     .index("by_org_id", ["orgId"])
     .index("by_status", ["status"])
     .index("by_archived", ["isArchived"])
-    .index("by_org_status", ["orgId", "status"]),
+    .index("by_pinned", ["isPinned"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_org_archived", ["orgId", "isArchived"])
+    .index("by_org_pinned", ["orgId", "isPinned"]),
 
   messages: defineTable({
     conversationId: v.id("conversations"),

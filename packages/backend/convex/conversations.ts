@@ -7,22 +7,35 @@ export const listConversations = query({
     orgId: v.string(),
     status: v.optional(v.union(v.literal("active"), v.literal("resolved"), v.literal("waiting"))),
     isArchived: v.optional(v.boolean()),
+    search: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     let q = ctx.db
       .query("conversations")
       .withIndex("by_org_id", (dbQ) => dbQ.eq("orgId", args.orgId));
 
-    const conversations = await q.collect();
+    let conversations = await q.collect();
 
-    // Perform filter match on status and archive state
-    return conversations
-      .filter((c) => {
-        if (args.status !== undefined && c.status !== args.status) return false;
-        if (args.isArchived !== undefined && c.isArchived !== args.isArchived) return false;
-        return true;
-      })
-      .sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp);
+    // Perform filter match on status, archive state
+    conversations = conversations.filter((c) => {
+      if (args.status !== undefined && c.status !== args.status) return false;
+      if (args.isArchived !== undefined && c.isArchived !== args.isArchived) return false;
+      
+      // Apply search filter if provided
+      if (args.search) {
+        const searchLower = args.search.toLowerCase();
+        if (!c.lastMessageText.toLowerCase().includes(searchLower)) return false;
+      }
+      
+      return true;
+    });
+
+    // Sort: pinned first, then by last message timestamp descending
+    return conversations.sort((a, b) => {
+      if ((a as any).isPinned && !(b as any).isPinned) return -1;
+      if (!(a as any).isPinned && (b as any).isPinned) return 1;
+      return b.lastMessageTimestamp - a.lastMessageTimestamp;
+    });
   },
 });
 
@@ -215,11 +228,13 @@ export const updateConversationStatus = mutation({
     conversationId: v.id("conversations"),
     status: v.optional(v.union(v.literal("active"), v.literal("resolved"), v.literal("waiting"))),
     isArchived: v.optional(v.boolean()),
+    isPinned: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const patches: Record<string, any> = {};
     if (args.status !== undefined) patches.status = args.status;
     if (args.isArchived !== undefined) patches.isArchived = args.isArchived;
+    if (args.isPinned !== undefined) patches.isPinned = args.isPinned;
 
     await ctx.db.patch(args.conversationId, patches);
     return true;
