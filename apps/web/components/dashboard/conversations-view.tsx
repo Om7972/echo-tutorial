@@ -33,7 +33,7 @@ import {
   ThumbsUp,
   Heart,
   Laugh,
-  Surprised,
+  Meh,
   Frown,
   Angry,
 } from "lucide-react";
@@ -62,7 +62,7 @@ const EMOJI_OPTIONS = [
   { emoji: "👍", component: ThumbsUp },
   { emoji: "❤️", component: Heart },
   { emoji: "😂", component: Laugh },
-  { emoji: "😮", component: Surprised },
+  { emoji: "�", component: Meh },
   { emoji: "😢", component: Frown },
   { emoji: "😠", component: Angry },
 ];

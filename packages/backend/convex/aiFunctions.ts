@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query, internalMutation, internalQuery, action } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
 // ─── Tool Definitions & Types ─────────────────────────────────────────────────
@@ -18,20 +18,13 @@ interface ToolDefinition {
     required: string[];
   };
   validate: (args: any) => Promise<{ valid: boolean; error?: string }>;
-  execute: (args: any, ctx: any, orgId: string, conversationId?: Id<"conversations">) => Promise<any>;
+  execute: (
+    args: any,
+    ctx: any,
+    orgId: string,
+    conversationId?: Id<"conversations">
+  ) => Promise<any>;
 }
-
-// Cost calculation (simplified)
-const COSTS = {
-  openai: {
-    "gpt-4o": { input: 0.05, output: 0.15 },
-    "gpt-3.5-turbo": { input: 0.0015, output: 0.002 },
-  },
-  anthropic: {
-    "claude-3-5-sonnet": { input: 0.003, output: 0.015 },
-    "claude-3-opus": { input: 0.015, output: 0.075 },
-  },
-};
 
 // ─── Tool Definitions ─────────────────────────────────────────────────────────
 const TOOLS: ToolDefinition[] = [
@@ -47,7 +40,7 @@ const TOOLS: ToolDefinition[] = [
       },
       required: ["query"],
     },
-    async validate(args) {
+    async validate(args: any) {
       if (!args.query || args.query.trim().length === 0) {
         return { valid: false, error: "Query parameter is required and cannot be empty" };
       }
@@ -56,21 +49,21 @@ const TOOLS: ToolDefinition[] = [
       }
       return { valid: true };
     },
-    async execute(args, ctx, orgId) {
+    async execute(args: any, ctx: any, orgId: string) {
       const results = await ctx.db
         .query("knowledge_base")
-        .withIndex("by_org_id", (q) => q.eq("orgId", orgId))
+        .withIndex("by_org_id", (q: any) => q.eq("orgId", orgId))
         .collect();
 
       const searchLower = args.query.toLowerCase();
       const filtered = results.filter(
-        (item) =>
+        (item: any) =>
           item.title.toLowerCase().includes(searchLower) ||
           item.content.toLowerCase().includes(searchLower)
       );
 
-      const sorted = filtered.sort((a, b) => b.updatedAt - a.updatedAt);
-      return sorted.slice(0, args.limit || 5).map((item) => ({
+      const sorted = filtered.sort((a: any, b: any) => b.updatedAt - a.updatedAt);
+      return sorted.slice(0, args.limit || 5).map((item: any) => ({
         id: item._id,
         title: item.title,
         content: item.content,
@@ -93,13 +86,13 @@ const TOOLS: ToolDefinition[] = [
       },
       required: ["reason"],
     },
-    async validate(args) {
+    async validate(args: any) {
       if (!args.reason || args.reason.trim().length === 0) {
         return { valid: false, error: "Reason parameter is required" };
       }
       return { valid: true };
     },
-    async execute(args, ctx, orgId, conversationId) {
+    async execute(args: any, ctx: any, orgId: string, conversationId?: Id<"conversations">) {
       if (conversationId) {
         await ctx.db.patch(conversationId, {
           status: "waiting",
@@ -130,13 +123,13 @@ const TOOLS: ToolDefinition[] = [
       },
       required: ["summary"],
     },
-    async validate(args) {
+    async validate(args: any) {
       if (!args.summary || args.summary.trim().length === 0) {
         return { valid: false, error: "Summary parameter is required" };
       }
       return { valid: true };
     },
-    async execute(args, ctx, orgId, conversationId) {
+    async execute(args: any, ctx: any, orgId: string, conversationId?: Id<"conversations">) {
       if (conversationId) {
         await ctx.db.patch(conversationId, {
           status: "resolved",
@@ -174,7 +167,7 @@ const TOOLS: ToolDefinition[] = [
       },
       required: ["title", "description"],
     },
-    async validate(args) {
+    async validate(args: any) {
       if (!args.title || args.title.trim().length === 0) {
         return { valid: false, error: "Title is required" };
       }
@@ -183,8 +176,8 @@ const TOOLS: ToolDefinition[] = [
       }
       return { valid: true };
     },
-    async execute(args, ctx, orgId, conversationId) {
-      const ticketId = await ctx.db.insert("conversations", {
+    async execute(args: any, ctx: any, orgId: string) {
+      const conversationId = await ctx.db.insert("conversations", {
         orgId,
         status: "waiting",
         isArchived: false,
@@ -195,7 +188,7 @@ const TOOLS: ToolDefinition[] = [
         lastMessageTimestamp: Date.now(),
         createdAt: Date.now(),
       });
-      return { success: true, ticketId, message: "Ticket created" };
+      return { success: true, conversationId, message: "Ticket created" };
     },
   },
   {
@@ -212,23 +205,23 @@ const TOOLS: ToolDefinition[] = [
       },
       required: [],
     },
-    async validate(args) {
+    async validate(args: any) {
       return { valid: true };
     },
-    async execute(args, ctx, orgId, conversationId) {
+    async execute(args: any, ctx: any, orgId: string, conversationId?: Id<"conversations">) {
       if (!conversationId) {
         throw new Error("No conversation ID provided");
       }
       const messages = await ctx.db
         .query("messages")
-        .withIndex("by_conversation_id", (q) => q.eq("conversationId", conversationId))
+        .withIndex("by_conversation_id", (q: any) => q.eq("conversationId", conversationId))
         .collect();
 
       const summary =
         args.format === "short"
           ? `${messages.length} messages exchanged. Latest: ${messages[messages.length - 1]?.content}`
           : args.format === "detailed"
-          ? messages.map((m) => `${m.senderName}: ${m.content}`).join("\n")
+          ? messages.map((m: any) => `${m.senderName}: ${m.content}`).join("\n")
           : `Conversation has ${messages.length} messages, latest from ${messages[messages.length - 1]?.senderName}`;
 
       return { summary };
@@ -245,15 +238,15 @@ const TOOLS: ToolDefinition[] = [
       },
       required: ["topic"],
     },
-    async validate(args) {
+    async validate(args: any) {
       if (!args.topic || args.topic.trim().length === 0) {
         return { valid: false, error: "Topic is required" };
       }
       return { valid: true };
     },
-    async execute(args) {
+    async execute(args: any) {
       const tone = args.tone || "professional";
-      const prefixes = {
+      const prefixes: any = {
         friendly: "Hey there!",
         professional: "Hello!",
         formal: "Dear Customer,",
@@ -273,13 +266,13 @@ const TOOLS: ToolDefinition[] = [
       },
       required: ["tags"],
     },
-    async validate(args) {
+    async validate(args: any) {
       if (!Array.isArray(args.tags) || args.tags.length === 0) {
         return { valid: false, error: "Tags array is required and cannot be empty" };
       }
       return { valid: true };
     },
-    async execute(args, ctx, orgId, conversationId) {
+    async execute(args: any, ctx: any, orgId: string, conversationId?: Id<"conversations">) {
       if (!conversationId) {
         throw new Error("No conversation ID provided");
       }
@@ -303,19 +296,19 @@ const TOOLS: ToolDefinition[] = [
       },
       required: [],
     },
-    async validate(args) {
+    async validate(args: any) {
       if (args.lookBack && (args.lookBack < 1 || args.lookBack > 20)) {
         return { valid: false, error: "LookBack must be between 1 and 20" };
       }
       return { valid: true };
     },
-    async execute(args, ctx, orgId, conversationId) {
+    async execute(args: any, ctx: any, orgId: string, conversationId?: Id<"conversations">) {
       if (!conversationId) {
         throw new Error("No conversation ID provided");
       }
       const messages = await ctx.db
         .query("messages")
-        .withIndex("by_conversation_id", (q) => q.eq("conversationId", conversationId))
+        .withIndex("by_conversation_id", (q: any) => q.eq("conversationId", conversationId))
         .collect();
 
       const lastN = messages.slice(-(args.lookBack || 3));
@@ -364,8 +357,8 @@ const updateCostMetrics = async (
   const today = new Date().toISOString().split("T")[0];
   const existing = await ctx.db
     .query("cost_metrics")
-    .withIndex("by_org_date", (q) => q.eq("orgId", orgId).eq("date", today))
-    .filter((q) => q.eq(q.field("provider"), provider).eq(q.field("model"), model))
+    .withIndex("by_org_date", (q: any) => q.eq("orgId", orgId).eq("date", today))
+    .filter((q: any) => q.eq(q.field("provider"), provider).eq(q.field("model"), model))
     .collect();
 
   if (existing.length > 0) {
@@ -398,7 +391,7 @@ export const executeTool = internalMutation({
     provider: v.union(v.literal("openai"), v.literal("anthropic")),
     model: v.string(),
   },
-  async handler(ctx, args) {
+  async handler(ctx: any, args: any) {
     const tool = getTool(args.toolName);
     if (!tool) {
       throw new Error(`Tool ${args.toolName} not found`);
@@ -544,7 +537,7 @@ export const executeTool = internalMutation({
 // ─── Get Tools Schema for OpenAI/Anthropic ─────────────────────────────────────
 export const getToolsSchema = query({
   args: {},
-  async handler(ctx, args) {
+  async handler(ctx: any, args: any) {
     return TOOLS.map((tool) => ({
       type: "function" as const,
       function: {
@@ -563,14 +556,14 @@ export const getToolCalls = query({
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
-  async handler(ctx, args) {
+  async handler(ctx: any, args: any) {
     let query = ctx.db
       .query("tool_calls")
-      .withIndex("by_org_id", (q) => q.eq("orgId", args.orgId));
+      .withIndex("by_org_id", (q: any) => q.eq("orgId", args.orgId));
 
     // We'd apply date filters with a filter if we had a better index, or in app code
     const calls = await query.collect();
-    return calls.sort((a, b) => b.startedAt - a.startedAt);
+    return calls.sort((a: any, b: any) => b.startedAt - a.startedAt);
   },
 });
 
@@ -580,15 +573,15 @@ export const getCostMetrics = query({
     orgId: v.string(),
     days: v.optional(v.number()),
   },
-  async handler(ctx, args) {
+  async handler(ctx: any, args: any) {
     const days = args.days || 30;
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     const metrics = await ctx.db
       .query("cost_metrics")
-      .withIndex("by_org_id", (q) => q.eq("orgId", args.orgId))
+      .withIndex("by_org_id", (q: any) => q.eq("orgId", args.orgId))
       .collect();
 
-    return metrics.filter((m) => new Date(m.date).getTime() > cutoff);
+    return metrics.filter((m: any) => new Date(m.date).getTime() > cutoff);
   },
 });
 
@@ -598,22 +591,22 @@ export const getAnalyticsDashboard = query({
     orgId: v.string(),
     days: v.optional(v.number()),
   },
-  async handler(ctx, args) {
+  async handler(ctx: any, args: any) {
     const days = args.days || 30;
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
 
     const toolCalls = await ctx.db
       .query("tool_calls")
-      .withIndex("by_org_id", (q) => q.eq("orgId", args.orgId))
+      .withIndex("by_org_id", (q: any) => q.eq("orgId", args.orgId))
       .collect();
 
-    const filteredCalls = toolCalls.filter((t) => t.startedAt > cutoff);
+    const filteredCalls = toolCalls.filter((t: any) => t.startedAt > cutoff);
 
     const stats: any = {
       totalToolCalls: filteredCalls.length,
-      completed: filteredCalls.filter((t) => t.status === "completed").length,
-      failed: filteredCalls.filter((t) => t.status === "failed").length,
-      fallback: filteredCalls.filter((t) => t.status === "fallback").length,
+      completed: filteredCalls.filter((t: any) => t.status === "completed").length,
+      failed: filteredCalls.filter((t: any) => t.status === "failed").length,
+      fallback: filteredCalls.filter((t: any) => t.status === "fallback").length,
       byTool: {},
       totalCost: 0,
     };
@@ -631,10 +624,10 @@ export const getAnalyticsDashboard = query({
 
     const costMetrics = await ctx.db
       .query("cost_metrics")
-      .withIndex("by_org_id", (q) => q.eq("orgId", args.orgId))
+      .withIndex("by_org_id", (q: any) => q.eq("orgId", args.orgId))
       .collect();
 
-    const filteredCosts = costMetrics.filter((m) => new Date(m.date).getTime() > cutoff);
+    const filteredCosts = costMetrics.filter((m: any) => new Date(m.date).getTime() > cutoff);
     const byDate: any = {};
     const byProvider: any = {};
 
@@ -668,7 +661,7 @@ export const addKnowledgeBaseItem = mutation({
     category: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
   },
-  async handler(ctx, args) {
+  async handler(ctx: any, args: any) {
     const now = Date.now();
     return await ctx.db.insert("knowledge_base", {
       orgId: args.orgId,

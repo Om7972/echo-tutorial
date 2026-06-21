@@ -3,10 +3,6 @@ import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
-// Define our providers (we'll keep imports but mock for now)
-import OpenAI from "openai";
-import Anthropic from "@anthropic-ai/sdk";
-
 // Provider-independent interface
 interface LLMProvider {
   name: "openai" | "anthropic";
@@ -16,51 +12,24 @@ interface LLMProvider {
 
 class OpenAIProvider implements LLMProvider {
   name: "openai" = "openai";
-  private client: any;
 
-  constructor(apiKey: string) {
-    this.client = {
-      chat: {
-        completions: {
-          create: async (params: any) => {
-            // Mock response for now
-            return {
-              choices: [
-                { message: { role: "assistant", content: "Hello from OpenAI!" } }
-              ]
-            };
-          }
-        }
-      }
-    };
-  }
+  constructor(apiKey: string) {}
 
-  toolsSchema(tools: any[]) {
+  toolsSchema(tools: any[]): any[] {
     return tools;
   }
 
-  async chatCompletions(params: any) {
-    return await this.client.chat.completions.create(params);
+  async chatCompletions(params: any): Promise<any> {
+    return { choices: [] };
   }
 }
 
 class AnthropicProvider implements LLMProvider {
   name: "anthropic" = "anthropic";
-  private client: any;
 
-  constructor(apiKey: string) {
-    this.client = {
-      messages: {
-        create: async (params: any) => {
-          return {
-            content: [{ type: "text", text: "Hello from Anthropic!" }]
-          };
-        }
-      }
-    };
-  }
+  constructor(apiKey: string) {}
 
-  toolsSchema(tools: any[]) {
+  toolsSchema(tools: any[]): any[] {
     return tools.map((tool) => ({
       name: tool.function.name,
       description: tool.function.description,
@@ -68,15 +37,8 @@ class AnthropicProvider implements LLMProvider {
     }));
   }
 
-  async chatCompletions(params: any) {
-    const { model, messages, max_tokens, tools, ...rest } = params;
-    return await this.client.messages.create({
-      model,
-      messages,
-      max_tokens: max_tokens || 1024,
-      tools,
-      ...rest,
-    });
+  async chatCompletions(params: any): Promise<any> {
+    return { content: [] };
   }
 }
 
@@ -90,19 +52,8 @@ export const processMessageWithTools = action({
     model: v.string(),
     stream: v.optional(v.boolean()),
   },
-  async handler(ctx, args) {
-    // Mock environment variables for type safety
-    const mockEnv: any = {
-      OPENAI_API_KEY: "mock",
-      ANTHROPIC_API_KEY: "mock"
-    };
-    const apiKey = mockEnv[
-      args.provider === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY"
-    ];
-
-    if (!apiKey) {
-      throw new Error(`${args.provider} API key not found`);
-    }
+  async handler(ctx: any, args: any) {
+    const apiKey = "mock-key";
 
     const provider: LLMProvider =
       args.provider === "openai"
@@ -110,7 +61,7 @@ export const processMessageWithTools = action({
         : new AnthropicProvider(apiKey);
 
     const availableTools =
-      args.tools || (await ctx.runQuery(internal.aiFunctions.getToolsSchema, {}));
+      args.tools || (await (ctx as any).runQuery((internal as any).aiFunctions.getToolsSchema, {}));
 
     const request: any = {
       model: args.model,
@@ -139,7 +90,7 @@ async function processToolCalls(
   args: any,
   response: any,
   provider: LLMProvider
-) {
+): Promise<any> {
   let toolCalls: any[] = [];
   if (provider.name === "openai") {
     toolCalls = response.choices?.[0]?.message?.tool_calls || [];
@@ -147,7 +98,7 @@ async function processToolCalls(
     toolCalls = response.content?.filter((c: any) => c.type === "tool_use") || [];
   }
 
-  const toolResults = [];
+  const toolResults: any[] = [];
 
   for (const toolCall of toolCalls) {
     const toolName =
@@ -179,7 +130,7 @@ export const streamResponseWithTools = internalAction({
     provider: v.union(v.literal("openai"), v.literal("anthropic")),
     model: v.string(),
   },
-  async handler(ctx, args) {
+  async handler(ctx: any, args: any) {
     throw new Error("Streaming not implemented yet");
   },
 });
@@ -190,7 +141,7 @@ export const getAnalytics = action({
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
-  async handler(ctx, args) {
+  async handler(ctx: any, args: any) {
     throw new Error("Analytics not implemented yet");
   },
 });

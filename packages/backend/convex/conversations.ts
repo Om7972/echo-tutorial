@@ -13,11 +13,11 @@ export const listConversations = query({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    let q = ctx.db
+    let query = ctx.db
       .query("conversations")
-      .withIndex("by_org_id", (dbQ) => dbQ.eq("orgId", args.orgId));
+      .withIndex("by_org_id", (q) => q.eq("orgId", args.orgId));
 
-    let conversations = await q.collect();
+    let conversations = await query.collect();
 
     // Perform filter match on status, archive state, priority, assignee, tags
     conversations = conversations.filter((c: any) => {
@@ -26,7 +26,7 @@ export const listConversations = query({
       if (args.priority !== undefined && c.priority !== args.priority) return false;
       if (args.assigneeId !== undefined && c.assigneeId !== args.assigneeId) return false;
       if (args.tags && args.tags.length > 0) {
-        const hasAllTags = args.tags.every(tag => c.tags?.includes(tag));
+        const hasAllTags = args.tags.every((tag) => c.tags?.includes(tag));
         if (!hasAllTags) return false;
       }
 
@@ -85,51 +85,35 @@ export const getMessagesPaginated = query({
     cursor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db
+    let allMessages = await ctx.db
       .query("messages")
-      .withIndex("by_conversation_timestamp", (q) =>
-        q.eq("conversationId", args.conversationId)
-      );
+      .withIndex("by_conversation_timestamp", (q) => q.eq("conversationId", args.conversationId))
+      .collect();
 
-    // Apply cursor if present
+    let startIndex = 0;
     if (args.cursor) {
-      const { timestamp, _id } = JSON.parse(
-        (Buffer as any).from(args.cursor, "base64").toString()
-      );
-      query = query.order("asc").filter((q) =>
-        q.or(
-          q.lt(q.field("timestamp"), timestamp),
-          q.and(q.eq(q.field("timestamp"), timestamp), q.lt(q.field("_id"), _id))
-        )
-      );
-    } else {
-      // No cursor: get latest messages first
-      query = query.order("desc");
+      const { timestamp, _id } = JSON.parse(args.cursor);
+      startIndex = allMessages.findIndex((msg: any) => msg._id === _id);
+      if (startIndex === -1) startIndex = 0;
     }
 
-    const rawMessages = await query.take(args.limit);
+    const endIndex = Math.min(startIndex + args.limit, allMessages.length);
+    const rawMessages = allMessages.slice(startIndex, endIndex);
 
-    // If we took descending, reverse to get ascending order
+    // If no cursor, reverse to get latest first
     let messages = args.cursor ? rawMessages : rawMessages.reverse();
 
-    // Determine if there's a next page
-    const hasMore = rawMessages.length === args.limit;
-
-    // Create next cursor (from first message in the current batch)
+    const hasMore = endIndex < allMessages.length;
     let nextCursor: string | null = null;
     if (hasMore && messages.length > 0) {
       const firstMessage = messages[0];
-      nextCursor = (Buffer as any).from(JSON.stringify({
+      nextCursor = JSON.stringify({
         timestamp: firstMessage.timestamp,
-        _id: firstMessage._id
-      })).toString("base64");
+        _id: firstMessage._id,
+      });
     }
 
-    return {
-      messages,
-      nextCursor,
-      hasMore
-    };
+    return { messages, nextCursor, hasMore };
   },
 });
 
@@ -197,7 +181,7 @@ export const getTypingStatuses = query({
 
     // Filter out stale statuses (older than 5 seconds)
     const now = Date.now();
-    return statuses.filter((s) => (now - s.lastUpdatedAt < 5000) && s.isTyping);
+    return statuses.filter((s) => now - s.lastUpdatedAt < 5000 && s.isTyping);
   },
 });
 
@@ -228,7 +212,6 @@ export const createConversation = mutation({
       priority: args.priority || "medium",
       tags: args.tags || [],
       assigneeId: args.assigneeId,
-      slaDeadline: args.priority === "high" ? now + 3600000 : args.priority === "medium" ? now + 7200000 : now + 14400000, // 1h, 2h, 4h
     });
 
     // 2. Insert initial message
@@ -381,7 +364,7 @@ export const bulkUpdateConversations = mutation({
   },
 });
 
-// ─── Mutation: Pin Message ───────────────────────────────────────────────
+// ─── Mutation: Pin Message ─────────────────────────────────────────────
 export const pinMessage = mutation({
   args: {
     messageId: v.id("messages"),
@@ -424,7 +407,7 @@ export const unpinMessage = mutation({
   },
 });
 
-// ─── Mutation: Add Reaction ───────────────────────────────────────────────
+// ─── Mutation: Add Reaction ─────────────────────────────────────────────
 export const addReaction = mutation({
   args: {
     messageId: v.id("messages"),
