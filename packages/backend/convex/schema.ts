@@ -131,10 +131,26 @@ export default defineSchema({
     senderId: v.string(),
     senderName: v.string(),
     senderType: v.union(v.literal("user"), v.literal("assistant"), v.literal("visitor")),
-    type: v.union(v.literal("text"), v.literal("image"), v.literal("voice"), v.literal("system")),
+    type: v.union(v.literal("text"), v.literal("image"), v.literal("voice"), v.literal("system"), v.literal("attachment"), v.literal("internal_note"), v.literal("quick_reply")),
     content: v.string(),
     status: v.union(v.literal("pending"), v.literal("sent"), v.literal("delivered"), v.literal("read")),
     timestamp: v.number(),
+    // New fields for premium features
+    isInternal: v.optional(v.boolean()), // internal note flag
+    reactions: v.optional(v.array(v.object({
+      emoji: v.string(),
+      userId: v.string(),
+      timestamp: v.number(),
+    }))),
+    replyToId: v.optional(v.id("messages")), // for replies
+    attachments: v.optional(v.array(v.object({
+      name: v.string(),
+      type: v.string(), // image/png, application/pdf, etc.
+      size: v.number(),
+      url: v.string(),
+      storageId: v.id("_storage"),
+    }))),
+    mentions: v.optional(v.array(v.string())), // user IDs
   })
     .index("by_conversation_id", ["conversationId"])
     .index("by_timestamp", ["timestamp"])
@@ -145,8 +161,70 @@ export default defineSchema({
     userId: v.string(),
     role: v.union(v.literal("agent"), v.literal("visitor")),
     joinedAt: v.number(),
+    typingStatus: v.optional(v.union(v.literal("idle"), v.literal("typing"))),
+    lastSeenAt: v.optional(v.number()),
   })
     .index("by_conversation_id", ["conversationId"])
     .index("by_user_id", ["userId"])
     .index("by_conversation_user", ["conversationId", "userId"]),
+
+  // ─── Premium Chat Features ─────────────────────────────────────────────────
+  message_reactions: defineTable({
+    messageId: v.id("messages"),
+    conversationId: v.id("conversations"),
+    userId: v.string(),
+    emoji: v.string(),
+    timestamp: v.number(),
+  })
+    .index("by_message_id", ["messageId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_message_user", ["messageId", "userId"]),
+
+  pinned_messages: defineTable({
+    messageId: v.id("messages"),
+    conversationId: v.id("conversations"),
+    pinnedById: v.string(),
+    pinnedAt: v.number(),
+  })
+    .index("by_conversation_id", ["conversationId"]),
+
+  internal_notes: defineTable({
+    conversationId: v.id("conversations"),
+    note: v.string(),
+    authorId: v.string(),
+    authorName: v.string(),
+    timestamp: v.number(),
+  })
+    .index("by_conversation_id", ["conversationId"]),
+
+  customer_profiles: defineTable({
+    orgId: v.string(),
+    visitorId: v.string(),
+    email: v.optional(v.string()),
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    company: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    customFields: v.optional(v.object({})),
+    lastSeenAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_org_visitor", ["orgId", "visitorId"]),
+
+  quick_replies: defineTable({
+    orgId: v.string(),
+    text: v.string(),
+    shortcut: v.optional(v.string()),
+    category: v.optional(v.string()),
+  })
+    .index("by_org_id", ["orgId"]),
+
+  typing_statuses: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.string(),
+    userName: v.string(),
+    isTyping: v.boolean(),
+    lastUpdatedAt: v.number(),
+  })
+    .index("by_conversation_id", ["conversationId"]),
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@workspace/backend/_generated/api";
 import {
@@ -22,6 +22,20 @@ import {
   ChevronDown,
   AlertCircle,
   Plus,
+  Paperclip,
+  Mic,
+  Smile,
+  MoreVertical,
+  MessageSquare,
+  StickyNote,
+  Sidebar,
+  EyeOff,
+  ThumbsUp,
+  Heart,
+  Laugh,
+  Surprised,
+  Sad,
+  Angry,
 } from "lucide-react";
 import { usePaginatedMessages } from "@/hooks/use-paginated-messages";
 import { VirtualizedInfiniteScroll } from "@workspace/ui/components/virtualized-infinite-scroll";
@@ -37,10 +51,27 @@ const MOCK_AGENTS = [
 
 const MOCK_TAGS = ["billing", "technical", "urgent", "feedback", "feature_request"];
 
+const QUICK_REPLIES = [
+  "Thanks for reaching out! How can I help?",
+  "I'm sorry for the inconvenience. Let me check that for you.",
+  "Could you please provide more details?",
+  "That sounds like it needs further investigation.",
+];
+
+const EMOJI_OPTIONS = [
+  { emoji: "👍", component: ThumbsUp },
+  { emoji: "❤️", component: Heart },
+  { emoji: "😂", component: Laugh },
+  { emoji: "😮", component: Surprised },
+  { emoji: "😢", component: Sad },
+  { emoji: "😠", component: Angry },
+];
+
 export function ConversationsView() {
   // Org context (simulated)
   const orgId = "acme";
   const currentAgentId = "agent_1";
+  const currentAgentName = "Support Agent 1";
 
   // State
   const [activeFilter, setActiveFilter] = useState<FilterStatus>("active");
@@ -54,6 +85,13 @@ export function ConversationsView() {
   const [assigneeFilter, setAssigneeFilter] = useState<string | undefined>();
   const [tagFilters, setTagFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [showCustomerSidebar, setShowCustomerSidebar] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [replyToMessage, setReplyToMessage] = useState<any>(null);
+  const [isInternalNoteMode, setIsInternalNoteMode] = useState(false);
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Convex Queries
   const allConversations = useQuery(api.conversations.listConversations, {
@@ -89,15 +127,39 @@ export function ConversationsView() {
       : "skip"
   );
 
+  // Get pinned messages
+  const pinnedMessages = useQuery(
+    api.conversations.getPinnedMessages,
+    activeId ? { conversationId: activeId as any } : "skip"
+  );
+
+  // Get typing statuses
+  const typingStatuses = useQuery(
+    api.conversations.getTypingStatuses,
+    activeId ? { conversationId: activeId as any } : "skip"
+  );
+
+  // Get quick replies
+  const quickReplies = useQuery(
+    api.conversations.getQuickReplies,
+    { orgId }
+  );
+
   // Determine which messages to show
   const displayMessages = msgSearch ? searchMessages : messages;
 
   // Convex Mutations
   const sendNewMessage = useMutation(api.conversations.postMessage);
-  const markMessagesAsRead = useMutation(api.conversations.markAsRead);
+  const markAsRead = useMutation(api.conversations.markAsRead);
   const updateConversationStatus = useMutation(api.conversations.updateConversationStatus);
   const startNewConversation = useMutation(api.conversations.createConversation);
   const bulkUpdateConversations = useMutation(api.conversations.bulkUpdateConversations);
+  const pinMessage = useMutation(api.conversations.pinMessage);
+  const unpinMessage = useMutation(api.conversations.unpinMessage);
+  const addReaction = useMutation(api.conversations.addReaction);
+  const removeReaction = useMutation(api.conversations.removeReaction);
+  const addInternalNote = useMutation(api.conversations.addInternalNote);
+  const updateTypingStatus = useMutation(api.conversations.updateTypingStatus);
 
   // Automatically select first conversation if none is active
   useEffect(() => {
@@ -109,63 +171,77 @@ export function ConversationsView() {
   // Mark messages as read when active conversation switches or updates
   useEffect(() => {
     if (activeId) {
-      markMessagesAsRead({
+      markAsRead({
         conversationId: activeId as any,
         userId: currentAgentId,
       });
     }
-  }, [activeId, displayMessages?.length, markMessagesAsRead, currentAgentId]);
+  }, [activeId, displayMessages?.length, markAsRead, currentAgentId]);
 
-  // Keyboard shortcuts
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Handle typing status
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+
+    if (!typingTimeout) {
+      updateTypingStatus({
+        conversationId: activeId as any,
+        userId: currentAgentId,
+        userName: currentAgentName,
+        isTyping: true,
+      });
+    }
+
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+
+    const timeout = setTimeout(() => {
+      updateTypingStatus({
+        conversationId: activeId as any,
+        userId: currentAgentId,
+        userName: currentAgentName,
+        isTyping: false,
+      });
+      setTypingTimeout(null);
+    }, 1000);
+
+    setTypingTimeout(timeout);
+  };
+
+  // Cleanup typing timeout
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!allConversations) return;
-
-      // Cmd/Ctrl + A: Select all
-      if ((e.metaKey || e.ctrlKey) && e.key === "a") {
-        e.preventDefault();
-        setSelectedConversationIds(allConversations.map(c => c._id));
-      }
-
-      // Escape: Deselect all
-      if (e.key === "Escape") {
-        setSelectedConversationIds([]);
-      }
-
-      // Arrow keys to navigate
-      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-        e.preventDefault();
-        const currentIndex = activeId ? allConversations.findIndex(c => c._id === activeId) : -1;
-        let newIndex: number;
-        if (e.key === "ArrowUp") {
-          newIndex = currentIndex > 0 ? currentIndex - 1 : allConversations.length - 1;
-        } else {
-          newIndex = currentIndex < allConversations.length - 1 ? currentIndex + 1 : 0;
-        }
-        if (newIndex >= 0) {
-          setActiveId(allConversations[newIndex]._id);
-        }
+    return () => {
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
       }
     };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [allConversations, activeId]);
+  }, [typingTimeout]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || !activeId) return;
 
-    await sendNewMessage({
-      conversationId: activeId as any,
-      senderId: currentAgentId,
-      senderName: "Support Agent",
-      senderType: "user",
-      type: "text",
-      content: input,
-    });
+    if (isInternalNoteMode) {
+      await addInternalNote({
+        conversationId: activeId as any,
+        note: input,
+        authorId: currentAgentId,
+        authorName: currentAgentName,
+      });
+    } else {
+      await sendNewMessage({
+        conversationId: activeId as any,
+        senderId: currentAgentId,
+        senderName: currentAgentName,
+        senderType: "user",
+        type: "text",
+        content: input,
+        replyToId: replyToMessage?._id,
+      });
+    }
 
     setInput("");
+    setReplyToMessage(null);
+    setIsInternalNoteMode(false);
   };
 
   const handleStatusChange = async (status: "active" | "resolved" | "waiting") => {
@@ -249,16 +325,49 @@ export function ConversationsView() {
     setSelectedConversationIds([]);
   };
 
+  const handleToggleMessagePin = async (msg: any) => {
+    if (!activeId) return;
+    const isPinned = pinnedMessages?.some((p: any) => p._id === msg._id);
+    if (isPinned) {
+      await unpinMessage({ messageId: msg._id });
+    } else {
+      await pinMessage({
+        messageId: msg._id,
+        conversationId: activeId as any,
+        pinnedById: currentAgentId,
+      });
+    }
+  };
+
+  const handleToggleReaction = async (msg: any, emoji: string) => {
+    if (!activeId) return;
+    try {
+      await removeReaction({ messageId: msg._id, userId: currentAgentId, emoji });
+    } catch {
+      await addReaction({
+        messageId: msg._id,
+        conversationId: activeId as any,
+        userId: currentAgentId,
+        emoji,
+      });
+    }
+  };
+
   const activeSession = allConversations?.find((c: any) => c._id === activeId);
 
   // Render function for individual messages
   const renderMessage = (m: any) => {
     const isAgent = m.senderType === "user";
+    const isPinned = pinnedMessages?.some((p: any) => p._id === m._id);
+
+    // Mock reactions
+    const mockReactions = [
+      { emoji: "👍", count: 2, users: ["agent_1", "agent_2"] },
+    ];
+
     return (
       <div
-        className={`flex gap-3 text-xs leading-relaxed max-w-[80%] ${
-          isAgent ? "ml-auto flex-row-reverse" : "mr-auto"
-        }`}
+        className={`flex gap-3 text-xs leading-relaxed max-w-[80%] ${isAgent ? "ml-auto flex-row-reverse" : "mr-auto"}`}
       >
         <div
           className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ${
@@ -267,32 +376,77 @@ export function ConversationsView() {
         >
           {isAgent ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
         </div>
-        <div
-          className={`px-3.5 py-2.5 rounded-2xl ${
-            isAgent
-              ? "bg-blue-600/10 border border-blue-500/20 text-slate-200 rounded-tr-none"
-              : "bg-slate-900/60 border border-white/5 text-slate-300 rounded-tl-none"
-          }`}
-        >
-          <p>{m.content}</p>
+        <div className="flex flex-col gap-1">
+          {replyToMessage?._id === m._id && (
+            <div className="text-xs text-slate-400">Replying to this message</div>
+          )}
+          <div
+            className={`px-3.5 py-2.5 rounded-2xl relative group ${
+              isAgent
+                ? "bg-blue-600/10 border border-blue-500/20 text-slate-200 rounded-tr-none"
+                : "bg-slate-900/60 border border-white/5 text-slate-300 rounded-tl-none"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p>{m.content}</p>
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-0.5">
+                  <button
+                    onClick={() => setReplyToMessage(m)}
+                    className="p-1 hover:bg-white/10 rounded"
+                  >
+                    <MessageSquare className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => handleToggleMessagePin(m)}
+                    className="p-1 hover:bg-white/10 rounded"
+                  >
+                    {isPinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
+                  </button>
+                  <button
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="p-1 hover:bg-white/10 rounded"
+                  >
+                    <Smile className="w-3 h-3" />
+                  </button>
+                  <button className="p-1 hover:bg-white/10 rounded">
+                    <MoreVertical className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
 
-          {/* Status checks */}
-          <div className="flex items-center justify-end gap-1 mt-1">
-            <span className="text-[9px] text-slate-500">
-              {new Date(m.timestamp).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-            {isAgent && (
-              <span>
-                {m.status === "read" ? (
-                  <CheckCheck className="w-3 h-3 text-blue-500" />
-                ) : (
-                  <Check className="w-3 h-3 text-slate-500" />
-                )}
-              </span>
+            {/* Reactions */}
+            {mockReactions.length > 0 && (
+              <div className="flex gap-1 mt-1">
+                {mockReactions.map((r: any) => (
+                  <button
+                    key={r.emoji}
+                    onClick={() => handleToggleReaction(m, r.emoji)}
+                    className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 hover:bg-slate-700"
+                  >
+                    <span>{r.emoji}</span>
+                    <span className="text-[10px]">{r.count}</span>
+                  </button>
+                ))}
+              </div>
             )}
+
+            {/* Status checks */}
+            <div className="flex items-center justify-end gap-1 mt-1">
+              <span className="text-[10px] text-slate-400">
+                {new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+              {isAgent && (
+                <span>
+                  {m.status === "read" ? (
+                    <CheckCheck className="w-3 h-3 text-blue-500" />
+                  ) : (
+                    <Check className="w-3 h-3 text-slate-400" />
+                  )}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -362,10 +516,10 @@ export function ConversationsView() {
               )}
             </div>
           </div>
-          <p className="text-[10px] text-slate-500 truncate">{c.lastMessageText}</p>
+          <p className="text-[10px] text-slate-400 truncate">{c.lastMessageText}</p>
           <div className="flex items-center gap-1.5 mt-1">
             <span
-              className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full border ${
+              className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full border ${
                 priorityColors[c.priority]
               }`}
             >
@@ -374,13 +528,13 @@ export function ConversationsView() {
             {c.tags?.slice(0, 2).map((tag: string) => (
               <span
                 key={tag}
-                className="text-[9px] text-slate-400 bg-slate-800/50 px-1.5 py-0.5 rounded"
+                className="text-[10px] text-slate-400 bg-slate-800/50 px-1.5 py-0.5 rounded"
               >
                 {tag}
               </span>
             ))}
             {c.assigneeId && (
-              <span className="text-[9px] text-slate-400">
+              <span className="text-[10px] text-slate-400">
                 Assigned to: {c.assigneeId === "team" ? "Team" : MOCK_AGENTS.find(a => a.id === c.assigneeId)?.name || c.assigneeId}
               </span>
             )}
@@ -391,9 +545,9 @@ export function ConversationsView() {
   };
 
   return (
-    <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[600px]">
-      {/* ─── Session List Pane ─── */}
-      <div className="border border-white/5 rounded-2xl bg-slate-900/20 backdrop-blur-sm flex flex-col overflow-hidden">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[700px]">
+      {/* Left Column: Conversation List */}
+      <div className="md:col-span-3 border border-white/5 rounded-2xl bg-slate-900/20 backdrop-blur-sm flex flex-col overflow-hidden">
         {/* Search & Actions Header */}
         <div className="p-3 border-b border-white/5 space-y-2">
           <div className="flex items-center justify-between">
@@ -401,7 +555,7 @@ export function ConversationsView() {
               onClick={handleCreateMockConversation}
               className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white font-bold px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
             >
-              <Plus className="w-2.5 h-2.5" /> Create Mock Chat
+              <Plus className="w-2.5 h-2.5" /> New Chat
             </button>
             <button
               onClick={() => setShowArchived((prev) => !prev)}
@@ -455,9 +609,7 @@ export function ConversationsView() {
         {showFilters && (
           <div className="p-3 border-b border-white/5 bg-slate-900/50 space-y-2">
             <div>
-              <label className="text-[10px] text-slate-400 font-semibold mb-1 block">
-                Priority
-              </label>
+              <label className="text-[10px] text-slate-400 font-semibold mb-1 block">Priority</label>
               <div className="flex gap-1">
                 {(["low", "medium", "high"] as Priority[]).map((p) => (
                   <button
@@ -476,9 +628,7 @@ export function ConversationsView() {
             </div>
 
             <div>
-              <label className="text-[10px] text-slate-400 font-semibold mb-1 block">
-                Assignee
-              </label>
+              <label className="text-[10px] text-slate-400 font-semibold mb-1 block">Assignee</label>
               <div className="flex flex-wrap gap-1">
                 <button
                   onClick={() => setAssigneeFilter(assigneeFilter === undefined ? null : undefined)}
@@ -529,9 +679,7 @@ export function ConversationsView() {
             </div>
 
             <div>
-              <label className="text-[10px] text-slate-400 font-semibold mb-1 block">
-                Tags
-              </label>
+              <label className="text-[10px] text-slate-400 font-semibold mb-1 block">Tags</label>
               <div className="flex flex-wrap gap-1">
                 {MOCK_TAGS.map((tag) => (
                   <button
@@ -560,25 +708,25 @@ export function ConversationsView() {
         {/* Bulk Actions */}
         {selectedConversationIds.length > 0 && (
           <div className="p-2 border-b border-white/5 bg-blue-500/5 flex items-center justify-between">
-            <span className="text-[10px] text-slate-300">
+            <span className="text-[10px] text-slate-200">
               {selectedConversationIds.length} selected
             </span>
             <div className="flex gap-1">
               <button
                 onClick={() => handleBulkUpdate({ isArchived: true })}
-                className="text-[9px] px-1.5 py-0.5 bg-slate-800 border border-white/5 rounded hover:bg-slate-700"
+                className="text-[10px] px-1.5 py-0.5 bg-slate-800 border border-white/5 rounded hover:bg-slate-700"
               >
                 Archive
               </button>
               <button
                 onClick={() => handleBulkUpdate({ status: "resolved" })}
-                className="text-[9px] px-1.5 py-0.5 bg-green-600/10 border border-green-500/20 rounded text-green-400 hover:bg-green-600/20"
+                className="text-[10px] px-1.5 py-0.5 bg-green-600/10 border border-green-500/20 rounded text-green-400 hover:bg-green-600/20"
               >
                 Resolve
               </button>
               <button
                 onClick={() => setSelectedConversationIds([])}
-                className="text-[9px] px-1.5 py-0.5"
+                className="text-[10px] px-1.5 py-0.5"
               >
                 <X className="w-2.5 h-2.5" />
               </button>
@@ -598,12 +746,12 @@ export function ConversationsView() {
         </div>
       </div>
 
-      {/* ─── Active Conversation View Pane ─── */}
-      <div className="md:col-span-2 border border-white/5 rounded-2xl bg-slate-900/20 backdrop-blur-sm flex flex-col overflow-hidden">
+      {/* Middle Column: Chat */}
+      <div className="md:col-span-6 border border-white/5 rounded-2xl bg-slate-900/20 backdrop-blur-sm flex flex-col overflow-hidden">
         {activeSession ? (
           <>
             {/* Header bar */}
-            <div className="p-4 border-b border-white/5 flex flex-col gap-2 bg-slate-950/40">
+            <div className="p-3 border-b border-white/5 flex flex-col gap-2 bg-slate-950/40">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/5 flex items-center justify-center font-bold text-slate-200">
@@ -638,9 +786,7 @@ export function ConversationsView() {
                       onClick={() => handleStatusChange("active")}
                       title="Mark Active"
                       className={`p-1.5 hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer ${
-                        activeSession.status === "active"
-                          ? "bg-blue-600/20 text-blue-400"
-                          : ""
+                        activeSession.status === "active" ? "bg-blue-600/20 text-blue-400" : ""
                       }`}
                     >
                       <Clock className="w-3.5 h-3.5" />
@@ -671,6 +817,12 @@ export function ConversationsView() {
                       <Archive className="w-3.5 h-3.5" />
                     )}
                   </button>
+                  <button
+                    onClick={() => setShowCustomerSidebar(!showCustomerSidebar)}
+                    className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white"
+                  >
+                    <Sidebar className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
@@ -681,7 +833,7 @@ export function ConversationsView() {
                   <button
                     key={p}
                     onClick={() => handlePriorityChange(p)}
-                    className={`text-[9px] px-1.5 py-0.5 rounded border ${
+                    className={`text-[10px] px-1.5 py-0.5 rounded border ${
                       activeSession.priority === p
                         ? "bg-blue-600/10 border-blue-500/20 text-blue-400"
                         : "bg-slate-800 border-white/5 text-slate-400 hover:bg-slate-700"
@@ -693,7 +845,7 @@ export function ConversationsView() {
                 <span className="text-[10px] text-slate-400 ml-2">Assign:</span>
                 <button
                   onClick={() => handleAssigneeChange(null)}
-                  className={`text-[9px] px-1.5 py-0.5 rounded border ${
+                  className={`text-[10px] px-1.5 py-0.5 rounded border ${
                     !activeSession.assigneeId
                       ? "bg-blue-600/10 border-blue-500/20 text-blue-400"
                       : "bg-slate-800 border-white/5 text-slate-400 hover:bg-slate-700"
@@ -703,7 +855,7 @@ export function ConversationsView() {
                 </button>
                 <button
                   onClick={() => handleAssigneeChange("team")}
-                  className={`text-[9px] px-1.5 py-0.5 rounded border ${
+                  className={`text-[10px] px-1.5 py-0.5 rounded border ${
                     activeSession.assigneeId === "team"
                       ? "bg-blue-600/10 border-blue-500/20 text-blue-400"
                       : "bg-slate-800 border-white/5 text-slate-400 hover:bg-slate-700"
@@ -715,7 +867,7 @@ export function ConversationsView() {
                   <button
                     key={agent.id}
                     onClick={() => handleAssigneeChange(agent.id)}
-                    className={`text-[9px] px-1.5 py-0.5 rounded border ${
+                    className={`text-[10px] px-1.5 py-0.5 rounded border ${
                       activeSession.assigneeId === agent.id
                         ? "bg-blue-600/10 border-blue-500/20 text-blue-400"
                         : "bg-slate-800 border-white/5 text-slate-400 hover:bg-slate-700"
@@ -726,6 +878,26 @@ export function ConversationsView() {
                 ))}
               </div>
             </div>
+
+            {/* Pinned messages */}
+            {pinnedMessages && pinnedMessages.length > 0 && (
+              <div className="p-2 border-b border-white/5 bg-slate-950/30">
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mb-1">
+                  <Pin className="w-2.5 h-2.5" />
+                  <span>Pinned messages</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {pinnedMessages.map((msg: any) => (
+                    <div
+                      key={msg._id}
+                      className="px-2 py-1 bg-slate-800/50 rounded-lg border border-white/5 text-[10px] text-slate-300 truncate max-w-full"
+                    >
+                      {msg.content}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Inner Message Search Bar */}
             <div className="p-2 border-b border-white/5 bg-slate-950/20 flex items-center gap-1.5">
@@ -739,6 +911,19 @@ export function ConversationsView() {
               />
             </div>
 
+            {/* Quick replies */}
+            <div className="p-2 border-b border-white/5 bg-slate-950/20 flex flex-wrap gap-1">
+              {QUICK_REPLIES.map((reply, i) => (
+                <button
+                  key={i}
+                  onClick={() => setInput(reply)}
+                  className="text-[10px] px-2 py-1 bg-slate-800/50 rounded-lg border border-white/5 text-slate-300 hover:bg-slate-700/50"
+                >
+                  {reply}
+                </button>
+              ))}
+            </div>
+
             {/* Message History streams */}
             <div className="flex-1 bg-slate-950/20">
               {isLoadingMessages ? (
@@ -748,7 +933,7 @@ export function ConversationsView() {
               ) : displayMessages && displayMessages.length > 0 ? (
                 msgSearch ? (
                   // For search results, use normal scroll
-                  <div className="p-4 space-y-3.5 overflow-y-auto h-full">
+                  <div className="p-3 space-y-3.5 overflow-y-auto h-full">
                     {displayMessages.map((m: any) => renderMessage(m))}
                   </div>
                 ) : (
@@ -769,24 +954,95 @@ export function ConversationsView() {
               )}
             </div>
 
+            {/* Typing indicator */}
+            {typingStatuses && typingStatuses.length > 0 && (
+              <div className="p-2 border-t border-white/5 bg-slate-950/30">
+                <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <span>{typingStatuses.map((t: any) => t.userName).join(", ")} is typing...</span>
+                </div>
+              </div>
+            )}
+
+            {/* Reply to */}
+            {replyToMessage && (
+              <div className="p-2 border-t border-white/5 bg-slate-950/30 flex items-center justify-between gap-2">
+                <div className="text-[10px] text-slate-300 truncate">
+                  Replying to: {replyToMessage.content}
+                </div>
+                <button
+                  onClick={() => setReplyToMessage(null)}
+                  className="text-slate-400 hover:text-slate-200"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
             {/* Input Bar */}
-            <div className="p-3 border-t border-white/5 flex gap-2 bg-slate-950/40">
-              <input
-                type="text"
-                placeholder="Type your message..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSendMessage();
-                }}
-                className="flex-1 pl-3.5 pr-4 py-2 bg-slate-900/60 border border-white/5 rounded-xl text-xs text-slate-250 placeholder-slate-500 focus:outline-none focus:border-blue-500/50"
-              />
-              <button
-                onClick={handleSendMessage}
-                className="w-10 h-10 bg-blue-600 hover:bg-blue-500 text-white rounded-xl flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <Send className="w-4 h-4" />
-              </button>
+            <div className="p-3 border-t border-white/5 flex flex-col gap-2 bg-slate-950/40">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsInternalNoteMode(!isInternalNoteMode)}
+                  className={`p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer ${
+                    isInternalNoteMode ? "bg-yellow-600/20 text-yellow-400" : ""
+                  }`}
+                  title="Internal Note"
+                >
+                  <StickyNote className="w-3.5 h-3.5" />
+                </button>
+                <button className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white">
+                  <Paperclip className="w-3.5 h-3.5" />
+                </button>
+                <button className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white">
+                  <Mic className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white"
+                >
+                  <Smile className="w-3.5 h-3.5" />
+                </button>
+
+                <div className="flex-1 relative">
+                  <textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder={isInternalNoteMode ? "Write an internal note..." : "Type your message..."}
+                    rows={1}
+                    className="w-full pl-3.5 pr-12 py-2 bg-slate-900/60 border border-white/5 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 resize-none max-h-24"
+                    style={{
+                      height: "auto",
+                      minHeight: "40px",
+                    }}
+                  />
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={!input.trim()}
+                      className="w-8 h-8 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {isInternalNoteMode && (
+                <div className="flex items-center gap-1.5 text-[10px] text-yellow-400 bg-yellow-500/10 px-2 py-1 rounded-lg border border-yellow-500/20">
+                  <EyeOff className="w-3 h-3" />
+                  <span>This is an internal note, visible only to your team</span>
+                </div>
+              )}
             </div>
           </>
         ) : (
@@ -795,6 +1051,92 @@ export function ConversationsView() {
           </div>
         )}
       </div>
+
+      {/* Right Column: Customer Profile Sidebar */}
+      {showCustomerSidebar && (
+        <div className="md:col-span-3 border border-white/5 rounded-2xl bg-slate-900/20 backdrop-blur-sm flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-white/5 flex items-center justify-between bg-slate-950/40">
+            <h3 className="text-xs font-bold text-slate-100">Customer Profile</h3>
+            <button
+              onClick={() => setShowCustomerSidebar(false)}
+              className="p-1 rounded hover:bg-white/5 text-slate-400"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="p-4 space-y-4 overflow-y-auto">
+            {/* Customer info */}
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-slate-800 border border-white/5 flex items-center justify-center text-2xl font-bold text-slate-300 mx-auto mb-3">
+                V
+              </div>
+              <h4 className="text-sm font-semibold text-slate-200">Visitor</h4>
+              <p className="text-xs text-slate-400">visitor@example.com</p>
+            </div>
+
+            {/* Details */}
+            <div className="space-y-2">
+              <div className="text-xs text-slate-400 flex justify-between">
+                <span>First seen</span>
+                <span>2 days ago</span>
+              </div>
+              <div className="text-xs text-slate-400 flex justify-between">
+                <span>Last seen</span>
+                <span>5 mins ago</span>
+              </div>
+              <div className="text-xs text-slate-400 flex justify-between">
+                <span>Conversations</span>
+                <span>3</span>
+              </div>
+            </div>
+
+            {/* Tags */}
+            <div>
+              <h5 className="text-[10px] font-semibold text-slate-300 mb-2">Tags</h5>
+              <div className="flex flex-wrap gap-1">
+                {["new_customer", "premium", "vip"].map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[10px] px-2 py-0.5 bg-slate-800/50 rounded-lg border border-white/5 text-slate-300"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <h5 className="text-[10px] font-semibold text-slate-300 mb-2">Notes</h5>
+              <div className="bg-slate-800/30 p-2 rounded-lg border border-white/5">
+                <p className="text-xs text-slate-300">
+                  Customer has been with us for over a year. Very valuable account.
+                </p>
+                <p className="text-[9px] text-slate-400 mt-1">Added by Agent 2, 3 days ago</p>
+              </div>
+            </div>
+
+            {/* Activity */}
+            <div>
+              <h5 className="text-[10px] font-semibold text-slate-300 mb-2">Activity</h5>
+              <div className="space-y-2">
+                {[
+                  { action: "Opened conversation", time: "5 mins ago" },
+                  { action: "Viewed pricing page", time: "10 mins ago" },
+                  { action: "Visited homepage", time: "15 mins ago" },
+                ].map((activity, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    <span className="text-slate-300">{activity.action}</span>
+                    <span className="text-slate-500 ml-auto">{activity.time}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
