@@ -1,0 +1,24 @@
+# CodeRabbit Configuration
+# See https://coderabbit.ai/docs/configuration/
+
+review:
+  enable: true
+  auto_review:
+    enabled: true
+    drafts: false
+  request_changes:
+    enabled: true
+    fail_ci: false
+  summary:
+    enabled: true
+  instructions: |
+    Review this PR for:
+    - Bug fixes
+    - Code quality
+    - Security issues
+    - Performance improvements
+    - Compliance with our coding standards
+
+    Be constructive and provide actionable feedback.
+
+language: en

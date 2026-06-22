@@ -422,4 +422,189 @@ export default defineSchema({
   })
     .index("by_org_id", ["orgId"])
     .index("by_org_date", ["orgId", "timestamp"]),
+
+  // ─── Subscriptions & Billing ───────────────────────────────────────────────
+  plans: defineTable({
+    planId: v.string(), // "free", "pro", "business", "enterprise"
+    name: v.string(),
+    description: v.string(),
+    priceMonthly: v.number(), // USD cents
+    priceYearly: v.optional(v.number()),
+    features: v.array(v.string()),
+    limits: v.object({
+      seats: v.number(),
+      conversations: v.number(),
+      aiMessages: v.number(),
+      tokens: v.number(),
+      kbDocuments: v.number(),
+      apiCalls: v.number(),
+      integrations: v.array(v.string()),
+      customDomain: v.boolean(),
+      sla: v.optional(v.string()),
+    }),
+    isPublic: v.boolean(),
+    stripePriceIdMonthly: v.optional(v.string()),
+    stripePriceIdYearly: v.optional(v.string()),
+    order: v.number(),
+  })
+    .index("by_plan_id", ["planId"])
+    .index("by_public", ["isPublic"]),
+
+  subscriptions: defineTable({
+    orgId: v.string(),
+    userId: v.optional(v.string()),
+    planId: v.string(),
+    status: v.union(
+      v.literal("trialing"),
+      v.literal("active"),
+      v.literal("past_due"),
+      v.literal("canceled"),
+      v.literal("incomplete"),
+      v.literal("incomplete_expired"),
+      v.literal("paused"),
+      v.literal("unpaid")
+    ),
+    currentPeriodStart: v.number(),
+    currentPeriodEnd: v.number(),
+    cancelAtPeriodEnd: v.boolean(),
+    cancelAt: v.optional(v.number()),
+    startedAt: v.number(),
+    endedAt: v.optional(v.number()),
+    stripeCustomerId: v.optional(v.string()),
+    stripeSubscriptionId: v.optional(v.string()),
+    stripePriceId: v.optional(v.string()),
+    couponId: v.optional(v.id("coupons")),
+    trialEndsAt: v.optional(v.number()),
+    gracePeriodEndsAt: v.optional(v.number()),
+    billingCycle: v.union(v.literal("monthly"), v.literal("yearly")),
+    metadata: v.optional(v.object({})),
+    quantity: v.number(), // seats
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_user_id", ["userId"])
+    .index("by_stripe_subscription_id", ["stripeSubscriptionId"])
+    .index("by_stripe_customer_id", ["stripeCustomerId"])
+    .index("by_status", ["status"])
+    .index("by_org_status", ["orgId", "status"]),
+
+  invoices: defineTable({
+    orgId: v.string(),
+    subscriptionId: v.optional(v.id("subscriptions")),
+    stripeInvoiceId: v.string(),
+    stripeInvoiceNumber: v.optional(v.string()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("open"),
+      v.literal("paid"),
+      v.literal("void"),
+      v.literal("uncollectible")
+    ),
+    amountDue: v.number(), // USD cents
+    amountPaid: v.number(),
+    amountRemaining: v.number(),
+    currency: v.string(),
+    dueDate: v.optional(v.number()),
+    paidAt: v.optional(v.number()),
+    hostedInvoiceUrl: v.optional(v.string()),
+    invoicePdf: v.optional(v.string()),
+    periodStart: v.number(),
+    periodEnd: v.number(),
+    lines: v.optional(v.array(v.object({
+      description: v.string(),
+      amount: v.number(),
+      quantity: v.number(),
+      periodStart: v.number(),
+      periodEnd: v.number(),
+    }))),
+    metadata: v.optional(v.object({})),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_subscription_id", ["subscriptionId"])
+    .index("by_stripe_invoice_id", ["stripeInvoiceId"])
+    .index("by_status", ["status"])
+    .index("by_org_date", ["orgId", "createdAt"]),
+
+  usage_metering: defineTable({
+    orgId: v.string(),
+    date: v.string(), // YYYY-MM-DD
+    metric: v.string(), // "conversations", "ai_messages", "tokens", "api_calls", "kb_documents", "seats"
+    usage: v.number(),
+    limit: v.optional(v.number()),
+    resetAt: v.number(), // when this metric resets
+  })
+    .index("by_org_date", ["orgId", "date"])
+    .index("by_org_metric_date", ["orgId", "metric", "date"]),
+
+  seats: defineTable({
+    orgId: v.string(),
+    userId: v.string(),
+    email: v.string(),
+    name: v.optional(v.string()),
+    role: v.union(v.literal("admin"), v.literal("agent"), v.literal("viewer")),
+    status: v.union(v.literal("active"), v.literal("invited"), v.literal("disabled")),
+    invitedAt: v.number(),
+    joinedAt: v.optional(v.number()),
+    lastActiveAt: v.optional(v.number()),
+    metadata: v.optional(v.object({})),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_org_user", ["orgId", "userId"])
+    .index("by_org_role", ["orgId", "role"])
+    .index("by_org_status", ["orgId", "status"]),
+
+  coupons: defineTable({
+    orgId: v.optional(v.string()),
+    code: v.string(),
+    name: v.string(),
+    type: v.union(v.literal("percentage"), v.literal("fixed_amount")),
+    amountOff: v.optional(v.number()), // USD cents if fixed
+    percentOff: v.optional(v.number()), // 0-100 if percentage
+    currency: v.optional(v.string()),
+    duration: v.union(v.literal("once"), v.literal("repeating"), v.literal("forever")),
+    durationInMonths: v.optional(v.number()), // for repeating
+    maxRedemptions: v.optional(v.number()),
+    timesRedeemed: v.number(),
+    validFrom: v.optional(v.number()),
+    validUntil: v.optional(v.number()),
+    appliesToPlans: v.optional(v.array(v.string())),
+    isActive: v.boolean(),
+    stripeCouponId: v.optional(v.string()),
+    metadata: v.optional(v.object({})),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_code", ["code"])
+    .index("by_org_id", ["orgId"])
+    .index("by_active", ["isActive"]),
+
+  feature_flags: defineTable({
+    orgId: v.optional(v.string()),
+    userId: v.optional(v.string()),
+    featureKey: v.string(),
+    value: v.union(v.boolean(), v.string(), v.number()),
+    enabled: v.boolean(),
+    description: v.optional(v.string()),
+    expiresAt: v.optional(v.number()),
+    metadata: v.optional(v.object({})),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_feature", ["orgId", "featureKey"])
+    .index("by_user_feature", ["userId", "featureKey"])
+    .index("by_feature", ["featureKey"]),
+
+  stripe_events: defineTable({
+    stripeEventId: v.string(),
+    type: v.string(),
+    data: v.any(),
+    processed: v.boolean(),
+    processedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_stripe_event_id", ["stripeEventId"])
+    .index("by_type", ["type"])
+    .index("by_processed", ["processed"]),
 });

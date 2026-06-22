@@ -16,9 +16,12 @@ import type {
 import type * as aiFunctions from "../aiFunctions.js";
 import type * as analytics from "../analytics.js";
 import type * as conversations from "../conversations.js";
+import type * as cron from "../cron.js";
+import type * as cronFunctions from "../cronFunctions.js";
 import type * as escalation from "../escalation.js";
 import type * as functionCalling from "../functionCalling.js";
 import type * as kb from "../kb.js";
+import type * as subscriptions from "../subscriptions.js";
 import type * as users from "../users.js";
 import type * as voice_messages from "../voice_messages.js";
 import type * as voice_sessions from "../voice_sessions.js";
@@ -36,9 +39,12 @@ declare const fullApi: ApiFromModules<{
   aiFunctions: typeof aiFunctions;
   analytics: typeof analytics;
   conversations: typeof conversations;
+  cron: typeof cron;
+  cronFunctions: typeof cronFunctions;
   escalation: typeof escalation;
   functionCalling: typeof functionCalling;
   kb: typeof kb;
+  subscriptions: typeof subscriptions;
   users: typeof users;
   voice_messages: typeof voice_messages;
   voice_sessions: typeof voice_sessions;

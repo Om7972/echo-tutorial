@@ -6,7 +6,9 @@
     "setup": "convex dev --until-success"
   },
   "exports": {
-    "./convex": "./convex/*.ts"
+    "./convex": "./convex/*.ts",
+    "./convex/_generated/*": "./convex/_generated/*",
+    "./src/utils/*": "./src/utils/*"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -14,6 +16,7 @@
     "typescript": "latest"
   },
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.758.0",
     "convex": "^1.25.4",
     "openai": "^4.0.0",
     "@anthropic-ai/sdk": "^0.20.0"

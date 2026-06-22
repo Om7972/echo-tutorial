@@ -166,16 +166,17 @@ export function DeveloperView() {
       }
     }, 1000)
   }
-
-  const embedScriptCode = `<script>
-  (function(w,d,s,o,f,js,fjs){
-    w['EchoWidget']=o;w[o]=w[o]||function(){(w[o].q=w[o].q||[]).push(arguments)};
-    js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];
-    js.id='echo-widget-sdk';js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);
-  }(window,document,'script','echo','http://localhost:3001/embed.js'));
-  
-  echo('init', { widgetId: '${widgetId}' });
-</` + `script>`
+  const embedScriptCode = [
+    "<" + "script>",
+    "  (function(w,d,s,o,f,js,fjs){",
+    "    w['EchoWidget']=o;w[o]=w[o]||function(){(w[o].q=w[o].q||[]).push(arguments)};",
+    "    js=d.createElement(s),fjs=d.getElementsByTagName(s)[0];",
+    "    js.id='echo-widget-sdk';js.src=f;js.async=1;fjs.parentNode.insertBefore(js,fjs);",
+    "  }(window,document,'scr' + 'ipt','echo','http://localhost:3001/embed.js'));",
+    "  ",
+    `  echo('init', { widgetId: '${widgetId}' });`,
+    "</" + "script>"
+  ].join("\n")
 
   return (
     <div className="space-y-6">
@@ -304,7 +305,7 @@ export function DeveloperView() {
                     Chat Widget Embed Integration
                   </h3>
                   <p className="text-[10px] text-slate-400 mt-1">
-                    Copy and paste the generated bootstrap SDK script below into the `<head>` or `<body>` element of your HTML pages.
+                    Copy and paste the generated bootstrap SDK script below into the head or body element of your HTML pages.
                   </p>
                 </div>
 
