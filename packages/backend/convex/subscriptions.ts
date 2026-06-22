@@ -240,7 +240,7 @@ async function initializeUsageMetering(ctx: any, orgId: string, planId: string) 
   const plan = PLANS.find(p => p.planId === planId);
   if (!plan) return;
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0]!;
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
   const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getTime();
 
@@ -275,54 +275,58 @@ async function initializeUsageMetering(ctx: any, orgId: string, planId: string) 
   }
 }
 
+export async function incrementUsageInternal(ctx: any, args: { orgId: string, metric: string, amount: number }) {
+  const today = new Date().toISOString().split('T')[0]!;
+  
+  const existing = await ctx.db
+    .query("usage_metering")
+    .withIndex("by_org_metric_date", (q: any) => 
+      q.eq("orgId", args.orgId).eq("metric", args.metric).eq("date", today)
+    )
+    .first();
+
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      usage: existing.usage + args.amount
+    });
+  } else {
+    const subscription = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_org_id", (q: any) => q.eq("orgId", args.orgId))
+      .first();
+    
+    const plan = subscription ? PLANS.find(p => p.planId === subscription.planId) : null;
+    let limit: number | undefined;
+    
+    if (plan) {
+      switch (args.metric) {
+        case "conversations": limit = plan.limits.conversations; break;
+        case "ai_messages": limit = plan.limits.aiMessages; break;
+        case "tokens": limit = plan.limits.tokens; break;
+        case "api_calls": limit = plan.limits.apiCalls; break;
+        case "kb_documents": limit = plan.limits.kbDocuments; break;
+        case "seats": limit = plan.limits.seats; break;
+      }
+    }
+
+    const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getTime();
+    
+    await ctx.db.insert("usage_metering", {
+      orgId: args.orgId,
+      date: today,
+      metric: args.metric,
+      usage: args.amount,
+      limit,
+      resetAt: monthEnd
+    });
+  }
+}
+
 // Increment usage metric
 export const incrementUsage = mutation({
   args: { orgId: v.string(), metric: v.string(), amount: v.number() },
   handler: async (ctx, args) => {
-    const today = new Date().toISOString().split('T')[0];
-    
-    const existing = await ctx.db
-      .query("usage_metering")
-      .withIndex("by_org_metric_date", (q) => 
-        q.eq("orgId", args.orgId).eq("metric", args.metric).eq("date", today)
-      )
-      .first();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        usage: existing.usage + args.amount
-      });
-    } else {
-      const subscription = await ctx.db
-        .query("subscriptions")
-        .withIndex("by_org_id", (q) => q.eq("orgId", args.orgId))
-        .first();
-      
-      const plan = subscription ? PLANS.find(p => p.planId === subscription.planId) : null;
-      let limit: number | undefined;
-      
-      if (plan) {
-        switch (args.metric) {
-          case "conversations": limit = plan.limits.conversations; break;
-          case "ai_messages": limit = plan.limits.aiMessages; break;
-          case "tokens": limit = plan.limits.tokens; break;
-          case "api_calls": limit = plan.limits.apiCalls; break;
-          case "kb_documents": limit = plan.limits.kbDocuments; break;
-          case "seats": limit = plan.limits.seats; break;
-        }
-      }
-
-      const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getTime();
-      
-      await ctx.db.insert("usage_metering", {
-        orgId: args.orgId,
-        date: today,
-        metric: args.metric,
-        usage: args.amount,
-        limit,
-        resetAt: monthEnd
-      });
-    }
+    await incrementUsageInternal(ctx, args);
   }
 });
 
@@ -330,7 +334,7 @@ export const incrementUsage = mutation({
 export const getUsage = query({
   args: { orgId: v.string() },
   handler: async (ctx, args) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0]!;
     
     const usageRecords = await ctx.db
       .query("usage_metering")
@@ -381,7 +385,7 @@ export const isFeatureEnabled = query({
     const featureLower = args.featureKey.toLowerCase();
     return plan.features.some(f => 
       f.toLowerCase().includes(featureLower) ||
-      featureLower.includes(f.toLowerCase().split(' ')[0])
+      featureLower.includes(f.toLowerCase().split(' ')[0]!)
     );
   }
 });
@@ -556,7 +560,7 @@ export const addSeat = mutation({
     });
 
     // Increment seat usage
-    await incrementUsage(ctx, { orgId: args.orgId, metric: "seats", amount: 1 });
+    await incrementUsageInternal(ctx, { orgId: args.orgId, metric: "seats", amount: 1 });
 
     return seatId;
   }

@@ -522,6 +522,8 @@ export function ConversationsView() {
             checked={isSelected}
             onChange={() => handleToggleConversationSelection(c._id)}
             className="w-3.5 h-3.5 rounded-sm border border-slate-500 bg-transparent accent-blue-500"
+            aria-label="Select conversation"
+            title="Select conversation"
           />
         </div>
         <div className="w-9 h-9 rounded-xl bg-slate-800 border border-white/5 flex items-center justify-center font-bold text-slate-300 flex-shrink-0">
@@ -812,6 +814,8 @@ export function ConversationsView() {
               <button
                 onClick={() => setSelectedConversationIds([])}
                 className="text-[10px] px-1.5 py-0.5"
+                aria-label="Clear selection"
+                title="Clear selection"
               >
                 <X className="w-2.5 h-2.5" />
               </button>
@@ -1128,6 +1132,8 @@ export function ConversationsView() {
                 <button
                   onClick={() => setReplyToMessage(null)}
                   className="text-slate-400 hover:text-slate-200"
+                  aria-label="Cancel reply"
+                  title="Cancel reply"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -1215,6 +1221,8 @@ export function ConversationsView() {
             <button
               onClick={() => setShowCustomerSidebar(false)}
               className="p-1 rounded hover:bg-white/5 text-slate-400"
+              aria-label="Close customer profile sidebar"
+              title="Close"
             >
               <X className="w-3.5 h-3.5" />
             </button>

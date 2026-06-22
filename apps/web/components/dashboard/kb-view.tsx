@@ -401,6 +401,8 @@ export function KBView() {
                 <button
                   onClick={() => setSelectedDoc(null)}
                   className="p-1 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-lg transition-all"
+                  aria-label="Close document details"
+                  title="Close"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -498,6 +500,8 @@ export function KBView() {
                 }
               }}
               className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-lg transition-all"
+              aria-label="Close upload modal"
+              title="Close"
             >
               <X className="w-4 h-4" />
             </button>
@@ -511,13 +515,16 @@ export function KBView() {
               
               {/* Category */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                <label htmlFor="document-category-select" className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
                   Document Category
                 </label>
                 <select
+                  id="document-category-select"
                   value={uploadCategory}
                   onChange={(e) => setUploadCategory(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"
+                  aria-label="Document Category"
+                  title="Document Category"
                 >
                   {categories.filter(c => c !== "All").map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -527,7 +534,7 @@ export function KBView() {
 
               {/* Drag/Drop Box */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                <label htmlFor="document-file-input" className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
                   Select Document File
                 </label>
                 
@@ -536,11 +543,14 @@ export function KBView() {
                   className="border-2 border-dashed border-slate-800 hover:border-blue-500/50 bg-slate-950/40 p-8 rounded-xl text-center cursor-pointer transition-all space-y-2.5"
                 >
                   <input
+                    id="document-file-input"
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileChange}
                     accept=".pdf,.docx,.txt,.md"
                     className="hidden"
+                    aria-label="Select Document File"
+                    title="Select Document File"
                   />
                   <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mx-auto">
                     <FileText className="w-5 h-5" />

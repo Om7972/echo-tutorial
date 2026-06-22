@@ -142,7 +142,7 @@ function ColorSwatch({
     <button
       id={`theme-panel-color-${colorId}`}
       onClick={() => setColor(colorId as any)}
-      aria-pressed={isActive ? "true" : "false"}
+      aria-pressed={isActive}
       className={`
         flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left
         border transition-all duration-200

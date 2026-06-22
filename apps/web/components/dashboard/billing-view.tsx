@@ -169,7 +169,7 @@ export function BillingView() {
                       <div key={seat._id} className="py-3 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
-                            {(seat.name || seat.email)[0].toUpperCase()}
+                            {(seat.name || seat.email).charAt(0).toUpperCase()}
                           </div>
                         <div>
                           <span className="text-xs font-semibold text-slate-200 block">{seat.name || seat.email}</span>
@@ -315,6 +315,8 @@ export function BillingView() {
               <button
                 onClick={() => setSelectedPlan(null)}
                 className="text-slate-400 hover:text-white"
+                aria-label="Close upgrade modal"
+                title="Close"
               >
                 <XCircle className="w-5 h-5" />
               </button>

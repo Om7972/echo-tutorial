@@ -114,7 +114,7 @@ export default function LandingPage() {
             <a href="#features" className="hover:text-slate-200 transition-colors">Features</a>
             <a href="#customizer" className="hover:text-slate-200 transition-colors">Live Customizer</a>
             <a href="#pricing" className="hover:text-slate-200 transition-colors">Pricing</a>
-            <a href="https://convex.dev" target="_blank" rel="noreferrer" className="hover:text-slate-200 transition-colors flex items-center gap-1">
+            <a href="https://convex.dev" target="_blank" rel="noopener noreferrer" className="hover:text-slate-200 transition-colors flex items-center gap-1">
               <span>Database</span>
               <ExternalLink className="w-3 h-3" />
             </a>
@@ -281,10 +281,11 @@ export default function LandingPage() {
 
               {/* Input for Org */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                <label htmlFor="org-display-name-input" className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
                   Organization Display Name
                 </label>
                 <input
+                  id="org-display-name-input"
                   type="text"
                   value={widgetOrg}
                   onChange={(e) => setWidgetOrg(e.target.value)}
@@ -629,8 +630,8 @@ export default function LandingPage() {
             &copy; {new Date().getFullYear()} Echo Control Inc. All rights reserved.
           </div>
           <div className="flex gap-4">
-            <a href="https://clerk.com" target="_blank" rel="noreferrer" className="hover:text-slate-400">Clerk Auth</a>
-            <a href="https://sentry.io" target="_blank" rel="noreferrer" className="hover:text-slate-400">Sentry telemetry</a>
+            <a href="https://clerk.com" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400">Clerk Auth</a>
+            <a href="https://sentry.io" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400">Sentry telemetry</a>
           </div>
         </div>
       </footer>

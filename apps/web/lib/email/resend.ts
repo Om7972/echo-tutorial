@@ -20,7 +20,7 @@ export async function sendEmail(options: EmailOptions) {
       html: options.html,
       text: options.text,
       replyTo: options.replyTo,
-    });
+    } as any);
 
     return response;
   } catch (error) {

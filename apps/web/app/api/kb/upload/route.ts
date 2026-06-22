@@ -3,7 +3,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "@workspace/backend/_generated/api";
 import OpenAI from "openai";
 // @ts-ignore
-import * as pdfParse from "pdf-parse";
+const pdfParse = require("pdf-parse");
 import mammoth from "mammoth";
 
 // Initialize Convex Client

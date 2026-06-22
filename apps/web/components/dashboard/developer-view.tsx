@@ -312,10 +312,13 @@ export function DeveloperView() {
                 <div className="flex items-center gap-3 bg-slate-900 border border-white/5 p-3 rounded-xl">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Widget Token:</span>
                   <input
+                    id="widget-token-input"
                     type="text"
                     value={widgetId}
                     onChange={(e) => setWidgetId(e.target.value)}
                     className="flex-1 bg-transparent text-xs font-semibold text-slate-250 border-none outline-none"
+                    aria-label="Widget Token"
+                    title="Widget Token"
                   />
                 </div>
 
@@ -581,6 +584,8 @@ print(f"Created Conversation: {conversation.id}")`}</pre>
                   value={selectedMethod}
                   onChange={(e) => setSelectedMethod(e.target.value as any)}
                   className="bg-slate-900 border border-white/5 rounded-xl px-3 py-2 text-xs font-bold text-slate-350"
+                  aria-label="HTTP Method"
+                  title="HTTP Method"
                 >
                   <option value="GET">GET</option>
                   <option value="POST">POST</option>
@@ -592,6 +597,8 @@ print(f"Created Conversation: {conversation.id}")`}</pre>
                   value={selectedPath}
                   onChange={(e) => setSelectedPath(e.target.value)}
                   className="flex-1 bg-slate-900 border border-white/5 rounded-xl px-3 py-2 text-xs font-bold text-slate-350"
+                  aria-label="API Endpoint Path"
+                  title="API Endpoint Path"
                 >
                   <option value="/v1/conversations">/v1/conversations</option>
                   <option value="/v1/agents">/v1/agents</option>
@@ -612,12 +619,14 @@ print(f"Created Conversation: {conversation.id}")`}</pre>
               {/* Request JSON Body editor */}
               {selectedMethod === "POST" && (
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Request Body (JSON)</label>
+                  <label htmlFor="api-playground-request-body" className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Request Body (JSON)</label>
                   <textarea
+                    id="api-playground-request-body"
                     value={requestBody}
                     onChange={(e) => setRequestBody(e.target.value)}
                     rows={4}
                     className="w-full font-mono text-xs p-3.5 rounded-xl bg-slate-900/80 border border-white/5 text-slate-200 outline-none focus:border-blue-500/40"
+                    placeholder="Enter JSON request body"
                   />
                 </div>
               )}

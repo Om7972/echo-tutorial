@@ -163,6 +163,8 @@ export function AnalyticsView() {
               value={selectedWorkspace}
               onChange={(e) => setSelectedWorkspace(e.target.value)}
               className="text-xs font-bold text-slate-200 bg-transparent border-none outline-none focus:ring-0 cursor-pointer"
+              aria-label="Select Workspace"
+              title="Select Workspace"
             >
               <option value="all" className="bg-slate-950 text-slate-200">All Workspaces</option>
               {workspaces.map((w: string) => (
@@ -178,6 +180,8 @@ export function AnalyticsView() {
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
               className="text-xs font-bold text-slate-200 bg-transparent border-none outline-none focus:ring-0 cursor-pointer"
+              aria-label="Select Date Range"
+              title="Select Date Range"
             >
               <option value="7d" className="bg-slate-950 text-slate-200">Last 7 Days</option>
               <option value="30d" className="bg-slate-950 text-slate-200">Last 30 Days</option>
@@ -194,6 +198,8 @@ export function AnalyticsView() {
                 value={customRange.start}
                 onChange={(e) => setCustomRange({ ...customRange, start: e.target.value })}
                 className="text-[10px] text-slate-200 bg-transparent border-none outline-none focus:ring-0"
+                aria-label="Start Date"
+                title="Start Date"
               />
               <span className="text-[10px] text-slate-500">to</span>
               <input
@@ -201,6 +207,8 @@ export function AnalyticsView() {
                 value={customRange.end}
                 onChange={(e) => setCustomRange({ ...customRange, end: e.target.value })}
                 className="text-[10px] text-slate-200 bg-transparent border-none outline-none focus:ring-0"
+                aria-label="End Date"
+                title="End Date"
               />
             </div>
           )}

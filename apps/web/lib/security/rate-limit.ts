@@ -17,7 +17,7 @@ export async function rateLimit(request: NextRequest, config: Partial<RateLimitC
   const cfg = { ...defaultConfig, ...config };
   const client = getRedisClient();
   
-  const identifier = request.ip || 'unknown';
+  const identifier = (request as any).ip || request.headers.get('x-forwarded-for') || 'unknown';
   const key = `${cfg.keyPrefix}${identifier}`;
   
   const current = await client.incr(key);
