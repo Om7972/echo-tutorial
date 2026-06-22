@@ -16,9 +16,10 @@ export const createDocument = mutation({
     orgId: v.string(),
     title: v.string(),
     fileName: v.string(),
-    fileType: v.union(v.literal("pdf"), v.literal("docx"), v.literal("txt")),
+    fileType: v.union(v.literal("pdf"), v.literal("docx"), v.literal("txt"), v.literal("md")),
     storageId: v.optional(v.string()),
     category: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const documentId = await ctx.db.insert("documents", {
@@ -27,9 +28,11 @@ export const createDocument = mutation({
       fileName: args.fileName,
       fileType: args.fileType,
       storageId: args.storageId ? (args.storageId as any) : undefined,
-      status: "processing",
+      status: "uploading",
+      progress: 0,
       version: 1,
       category: args.category,
+      tags: args.tags,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -47,14 +50,30 @@ export const createDocument = mutation({
   },
 });
 
+export const updateDocumentProgress = mutation({
+  args: {
+    documentId: v.id("documents"),
+    progress: v.number(),
+    status: v.union(v.literal("uploading"), v.literal("processing"), v.literal("indexing"), v.literal("indexed"), v.literal("failed")),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.documentId, {
+      progress: args.progress,
+      status: args.status,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 export const addChunksAndEmbeddings = mutation({
   args: {
     documentId: v.id("documents"),
     orgId: v.string(),
-    chunks: v.array(v.object({ text: v.string(), index: v.number() })),
+    chunks: v.array(v.object({ text: v.string(), index: v.number(), tokenCount: v.optional(v.number()) })),
     embeddings: v.array(v.object({ chunkIndex: v.number(), embedding: v.array(v.float64()) })),
     summary: v.optional(v.string()),
     version: v.number(),
+    model: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // 1. Update the document status
@@ -62,6 +81,7 @@ export const addChunksAndEmbeddings = mutation({
       status: "indexed",
       summary: args.summary,
       version: args.version,
+      progress: 100,
       updatedAt: Date.now(),
     });
 
@@ -73,6 +93,7 @@ export const addChunksAndEmbeddings = mutation({
         documentId: args.documentId,
         text: chunk.text,
         index: chunk.index,
+        tokenCount: chunk.tokenCount,
         createdAt: Date.now(),
       });
       chunkIdsMap[chunk.index] = chunkId;
@@ -87,6 +108,8 @@ export const addChunksAndEmbeddings = mutation({
           chunkId,
           documentId: args.documentId,
           embedding: emb.embedding,
+          model: args.model || "text-embedding-3-small",
+          createdAt: Date.now(),
         });
       }
     }
@@ -96,15 +119,90 @@ export const addChunksAndEmbeddings = mutation({
 export const updateDocumentStatus = mutation({
   args: {
     documentId: v.id("documents"),
-    status: v.union(v.literal("processing"), v.literal("indexed"), v.literal("failed")),
+    status: v.union(v.literal("uploading"), v.literal("processing"), v.literal("indexing"), v.literal("indexed"), v.literal("failed")),
     summary: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.documentId, {
       status: args.status,
       summary: args.summary,
+      errorMessage: args.errorMessage,
       updatedAt: Date.now(),
     });
+  },
+});
+
+export const reindexDocument = mutation({
+  args: {
+    documentId: v.id("documents"),
+  },
+  handler: async (ctx, args) => {
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc) throw new Error("Document not found");
+
+    // Delete old chunks and embeddings
+    const chunks = await ctx.db.query("chunks").withIndex("by_document_id", q => q.eq("documentId", args.documentId)).collect();
+    for (const chunk of chunks) {
+      await ctx.db.delete(chunk._id);
+    }
+    const embeddings = await ctx.db.query("embeddings").withIndex("by_document_id", q => q.eq("documentId", args.documentId)).collect();
+    for (const emb of embeddings) {
+      await ctx.db.delete(emb._id);
+    }
+
+    // Update document status and version
+    await ctx.db.patch(args.documentId, {
+      status: "indexing",
+      version: doc.version + 1,
+      progress: 10,
+      updatedAt: Date.now(),
+    });
+
+    return doc.version + 1;
+  },
+});
+
+// ─── Citation Mutations & Queries ───
+export const addCitation = mutation({
+  args: {
+    orgId: v.string(),
+    chunkId: v.id("chunks"),
+    documentId: v.id("documents"),
+    query: v.string(),
+    score: v.number(),
+    conversationId: v.optional(v.id("conversations")),
+    messageId: v.optional(v.id("messages")),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("citations", {
+      ...args,
+      citedAt: Date.now(),
+    });
+  },
+});
+
+export const getCitationsByConversation = query({
+  args: { conversationId: v.id("conversations") },
+  handler: async (ctx, args) => {
+    const citations = await ctx.db.query("citations")
+      .withIndex("by_conversation_id", q => q.eq("conversationId", args.conversationId))
+      .collect();
+
+    // Resolve chunks and docs for citations
+    const results = [];
+    for (const cit of citations) {
+      const chunk = await ctx.db.get(cit.chunkId);
+      const doc = await ctx.db.get(cit.documentId);
+      if (chunk && doc) {
+        results.push({
+          ...cit,
+          chunk,
+          document: doc,
+        });
+      }
+    }
+    return results;
   },
 });
 
@@ -113,13 +211,23 @@ export const updateDocumentStatus = mutation({
 export const listDocuments = query({
   args: {
     orgId: v.string(),
+    category: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("uploading"), v.literal("processing"), v.literal("indexing"), v.literal("indexed"), v.literal("failed"))),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("documents")
-      .withIndex("by_org_id", (q) => q.eq("orgId", args.orgId))
-      .order("desc")
-      .collect();
+    let query = ctx.db.query("documents").withIndex("by_org_id", (q) => q.eq("orgId", args.orgId));
+    
+    if (args.category) {
+      query = ctx.db.query("documents").withIndex("by_org_category", (q) => 
+        q.eq("orgId", args.orgId).eq("category", args.category));
+    }
+    
+    if (args.status) {
+      query = ctx.db.query("documents").withIndex("by_org_status", (q) => 
+        q.eq("orgId", args.orgId).eq("status", args.status));
+    }
+
+    return await query.order("desc").collect();
   },
 });
 
@@ -129,6 +237,21 @@ export const getDocument = query({
   },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.documentId);
+  },
+});
+
+export const getDocumentWithChunks = query({
+  args: { documentId: v.id("documents") },
+  handler: async (ctx, args) => {
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc) return null;
+
+    const chunks = await ctx.db.query("chunks")
+      .withIndex("by_document_id", q => q.eq("documentId", args.documentId))
+      .order("asc")
+      .collect();
+
+    return { doc, chunks };
   },
 });
 
@@ -158,6 +281,14 @@ export const deleteDocument = mutation({
       await ctx.db.delete(emb._id);
     }
 
+    // Delete associated citations
+    const citations = await ctx.db.query("citations")
+      .withIndex("by_document_id", q => q.eq("documentId", args.documentId))
+      .collect();
+    for (const cit of citations) {
+      await ctx.db.delete(cit._id);
+    }
+
     // Delete associated sources
     const sources = await ctx.db
       .query("sources")
@@ -174,6 +305,31 @@ export const deleteDocument = mutation({
 
     // Delete document
     await ctx.db.delete(args.documentId);
+  },
+});
+
+// ─── Vector Metrics Query ───
+export const getVectorMetrics = query({
+  args: { orgId: v.string() },
+  handler: async (ctx, args) => {
+    const docs = await ctx.db.query("documents").withIndex("by_org_id", q => q.eq("orgId", args.orgId)).collect();
+    const chunks = await ctx.db.query("chunks").withIndex("by_org_id", q => q.eq("orgId", args.orgId)).collect();
+    const embeddings = await ctx.db.query("embeddings").withIndex("by_org_id", q => q.eq("orgId", args.orgId)).collect();
+    
+    const statusCounts = docs.reduce((acc, doc) => {
+      acc[doc.status] = (acc[doc.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const totalTokens = chunks.reduce((sum, c) => sum + (c.tokenCount || 0), 0);
+
+    return {
+      documentCount: docs.length,
+      chunkCount: chunks.length,
+      embeddingCount: embeddings.length,
+      statusCounts,
+      totalTokens,
+    };
   },
 });
 
@@ -207,6 +363,7 @@ export const semanticSearch = action({
     orgId: v.string(),
     queryEmbedding: v.array(v.float64()),
     limit: v.optional(v.number()),
+    category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const searchLimit = args.limit ?? 5;
@@ -222,12 +379,7 @@ export const semanticSearch = action({
       return [];
     }
 
-    const chunkIds = results.map((r) => r._id as any); // The match returns matching document IDs or embedding record IDs
-    // Wait, in Convex, vectorSearch returns the _id of the record in the indexed table!
-    // Since our vectorIndex is on "embeddings", results will contain the _id of the matching record in the "embeddings" table.
-    // Let's retrieve those embedding records to get chunkId and documentId!
-    
-    // We can write a helper query to resolve embedding IDs to chunk and document data!
+    // Resolve embedding IDs to chunk and document data
     const resolvedData = (await ctx.runQuery(api.kb.resolveEmbeddingsWithContent as any, {
       embeddingIds: results.map((r) => r._id),
     })) as any[];
@@ -272,5 +424,80 @@ export const resolveEmbeddingsWithContent = query({
     }
 
     return output;
+  },
+});
+
+// ─── RAG Answer Generation ───
+export const generateRAGAnswer = action({
+  args: {
+    orgId: v.string(),
+    query: v.string(),
+    context: v.array(v.object({
+      text: v.string(),
+      documentTitle: v.string(),
+      score: v.number(),
+      chunkId: v.id("chunks"),
+      documentId: v.id("documents"),
+    })),
+    provider: v.optional(v.union(v.literal("openai"), v.literal("anthropic"), v.literal("grok"))),
+    model: v.optional(v.string()),
+    conversationId: v.optional(v.id("conversations")),
+    messageId: v.optional(v.id("messages")),
+  },
+  handler: async (ctx, args) => {
+    const provider = args.provider || "openai";
+    const model = args.model || (provider === "openai" ? "gpt-4o-mini" : provider === "anthropic" ? "claude-3-haiku-20240307" : "grok-beta");
+    
+    // Build context string
+    const contextText = args.context.map((c, i) => `[${i + 1}] ${c.text} (Source: ${c.documentTitle})`).join("\n\n");
+
+    // Build prompt
+    const systemPrompt = `
+You are an expert assistant that answers questions using the provided context from a knowledge base.
+Always cite your sources using [1], [2], etc. based on the numbered context.
+Structure your answer clearly and concisely.
+If you don't know the answer based on the context, say so clearly.
+`.trim();
+
+    const userPrompt = `
+Context:
+${contextText}
+
+Question: ${args.query}
+
+Please provide your answer in the following JSON format:
+{
+  "answer": "Your answer here with citations like [1]",
+  "sources": [
+    { "id": "chunkId", "title": "Document Title", "score": 0.95 },
+  ],
+  "confidence": 0.85 // 0-1 score of how confident you are in the answer
+}
+`.trim();
+
+    let answerData: any;
+    
+    // TODO: Add actual provider integrations (Anthropic, Grok)
+    // For now, mock or use OpenAI if key is available
+    answerData = {
+      answer: `This is a sample RAG answer for: "${args.query}"`,
+      sources: args.context.map(c => ({ id: c.chunkId, title: c.documentTitle, score: c.score })),
+      confidence: 0.85,
+    };
+
+    // Add citations
+    for (const source of answerData.sources) {
+      await ctx.runMutation(api.kb.addCitation, {
+        orgId: args.orgId,
+        chunkId: source.id,
+        documentId: args.context.find(c => c.chunkId === source.id)!.documentId,
+        query: args.query,
+        score: source.score,
+        conversationId: args.conversationId,
+        messageId: args.messageId,
+      });
+    }
+
+    return answerData;
   },
 });

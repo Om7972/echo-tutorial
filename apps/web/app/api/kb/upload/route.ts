@@ -14,43 +14,26 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "",
 });
 
-// Helper: Chunk Text
-function chunkText(text: string, chunkSize = 1000, overlap = 200): string[] {
-  const chunks: string[] = [];
-  let startIndex = 0;
-  
-  // Clean white spaces
-  const cleanedText = text.replace(/\s+/g, ' ').trim();
-  
-  if (cleanedText.length <= chunkSize) {
-    return [cleanedText];
+// Helper: Chunk Text with 500 token size, 50 token overlap
+function chunkText(text: string, chunkSize = 500, overlap = 50): { text: string; index: number; tokenCount: number }[] {
+  // Simple token estimation (split by words)
+  const words = text.replace(/\s+/g, " ").trim().split(" ");
+  const chunks: { text: string; index: number; tokenCount: number }[] = [];
+  let start = 0;
+
+  while (start < words.length) {
+    let end = Math.min(start + chunkSize, words.length);
+    let chunkWords = words.slice(start, end);
+    chunks.push({
+      text: chunkWords.join(" "),
+      index: chunks.length,
+      tokenCount: chunkWords.length,
+    });
+
+    start = end - overlap;
+    if (start <= 0) start = end; // Ensure progress
   }
 
-  while (startIndex < cleanedText.length) {
-    let endIndex = startIndex + chunkSize;
-    
-    // Find natural word boundary
-    if (endIndex < cleanedText.length) {
-      const lastSpace = cleanedText.lastIndexOf(' ', endIndex);
-      if (lastSpace > startIndex + chunkSize - overlap) {
-        endIndex = lastSpace;
-      }
-    }
-    
-    const chunk = cleanedText.slice(startIndex, endIndex).trim();
-    if (chunk.length > 0) {
-      chunks.push(chunk);
-    }
-    
-    startIndex = endIndex - overlap;
-    if (startIndex >= cleanedText.length) {
-      break;
-    }
-    if (endIndex <= startIndex) {
-      startIndex += chunkSize;
-    }
-  }
-  
   return chunks;
 }
 
@@ -60,6 +43,7 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null;
     const orgId = formData.get("orgId") as string | null;
     const category = formData.get("category") as string | null;
+    const tags = formData.get("tags") as string | null;
 
     if (!file || !orgId) {
       return NextResponse.json(
@@ -71,16 +55,16 @@ export async function POST(req: NextRequest) {
     const fileName = file.name;
     const fileExtension = fileName.split('.').pop()?.toLowerCase();
     
-    let fileType: "pdf" | "docx" | "txt";
+    let fileType: "pdf" | "docx" | "txt" | "md";
     if (fileExtension === "pdf") {
       fileType = "pdf";
     } else if (fileExtension === "docx") {
       fileType = "docx";
     } else if (fileExtension === "txt" || fileExtension === "md") {
-      fileType = "txt";
+      fileType = fileExtension as "txt" | "md";
     } else {
       return NextResponse.json(
-        { error: "Unsupported file type. Please upload PDF, DOCX, or TXT." },
+        { error: "Unsupported file type. Please upload PDF, DOCX, TXT, or MD." },
         { status: 400 }
       );
     }
@@ -91,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     // 2. Extract plain text
     let extractedText = "";
-    if (fileType === "txt") {
+    if (fileType === "txt" || fileType === "md") {
       extractedText = fileBuffer.toString("utf-8");
     } else if (fileType === "pdf") {
       try {
@@ -125,7 +109,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Chunk text
-    const chunks = chunkText(extractedText);
+    const chunks = chunkText(extractedText, 500, 50);
     if (chunks.length === 0) {
       return NextResponse.json(
         { error: "Document content is too short to chunk." },
@@ -150,7 +134,7 @@ export async function POST(req: NextRequest) {
       console.error("Failed to upload file to Convex storage:", err);
     }
 
-    // 5. Create document in database (starts in 'processing' status)
+    // 5. Create document in database
     const documentId = await convex.mutation(api.kb.createDocument, {
       orgId,
       title: fileName.replace(/\.[^/.]+$/, ""), // strip extension
@@ -158,17 +142,32 @@ export async function POST(req: NextRequest) {
       fileType,
       storageId,
       category: category || "General",
+      tags: tags ? JSON.parse(tags) : undefined,
+    });
+
+    // Update progress to 20%
+    await convex.mutation(api.kb.updateDocumentProgress, {
+      documentId,
+      progress: 20,
+      status: "processing",
     });
 
     // 6. Generate embeddings using OpenAI (with local mock fallback if no key)
     let embeddings: { chunkIndex: number; embedding: number[] }[] = [];
     const hasApiKey = !!process.env.OPENAI_API_KEY;
     
+    // Update progress to 40%
+    await convex.mutation(api.kb.updateDocumentProgress, {
+      documentId,
+      progress: 40,
+      status: "indexing",
+    });
+
     if (hasApiKey) {
       try {
         const response = await openai.embeddings.create({
           model: "text-embedding-3-small",
-          input: chunks,
+          input: chunks.map(c => c.text),
         });
         
         embeddings = response.data.map((item, idx) => ({
@@ -194,6 +193,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Update progress to 70%
+    await convex.mutation(api.kb.updateDocumentProgress, {
+      documentId,
+      progress: 70,
+      status: "indexing",
+    });
+
     // 7. Auto summarize document using OpenAI (with fallback)
     let summary = "";
     if (hasApiKey) {
@@ -218,17 +224,18 @@ export async function POST(req: NextRequest) {
     }
     
     if (!summary) {
-      summary = `A parsed ${fileType.toUpperCase()} file containing ${chunks.length} semantic chunks. Starts with: "${chunks[0]?.slice(0, 100)}..."`;
+      summary = `A parsed ${fileType.toUpperCase()} file containing ${chunks.length} semantic chunks. Starts with: "${chunks[0]?.text.slice(0, 100)}..."`;
     }
 
     // 8. Write chunks and embeddings to Convex and update document status to 'indexed'
     await convex.mutation(api.kb.addChunksAndEmbeddings, {
       documentId,
       orgId,
-      chunks: chunks.map((text, idx) => ({ text, index: idx })),
+      chunks,
       embeddings,
       summary,
       version: 1,
+      model: "text-embedding-3-small",
     });
 
     return NextResponse.json({

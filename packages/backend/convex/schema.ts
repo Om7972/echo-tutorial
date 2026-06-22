@@ -334,17 +334,22 @@ export default defineSchema({
     orgId: v.string(),
     title: v.string(),
     fileName: v.string(),
-    fileType: v.union(v.literal("pdf"), v.literal("docx"), v.literal("txt")),
+    fileType: v.union(v.literal("pdf"), v.literal("docx"), v.literal("txt"), v.literal("md")),
     storageId: v.optional(v.id("_storage")),
     status: v.union(
       v.literal("uploading"),
       v.literal("processing"),
+      v.literal("indexing"),
       v.literal("indexed"),
       v.literal("failed")
     ),
     version: v.number(),
     category: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
     summary: v.optional(v.string()),
+    progress: v.optional(v.number()), // 0-100
+    errorMessage: v.optional(v.string()),
+    parentDocumentId: v.optional(v.id("documents")), // for versioning
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -357,6 +362,8 @@ export default defineSchema({
     documentId: v.id("documents"),
     text: v.string(),
     index: v.number(),
+    tokenCount: v.optional(v.number()),
+    metadata: v.optional(v.object({})),
     createdAt: v.number(),
   })
     .index("by_document_id", ["documentId"])
@@ -367,6 +374,8 @@ export default defineSchema({
     chunkId: v.id("chunks"),
     documentId: v.id("documents"),
     embedding: v.array(v.float64()),
+    model: v.string(), // e.g. "text-embedding-3-small"
+    createdAt: v.number(),
   })
     .vectorIndex("by_embedding", {
       vectorField: "embedding",
@@ -375,6 +384,21 @@ export default defineSchema({
     })
     .index("by_chunk_id", ["chunkId"])
     .index("by_document_id", ["documentId"]),
+
+  citations: defineTable({
+    orgId: v.string(),
+    chunkId: v.id("chunks"),
+    documentId: v.id("documents"),
+    conversationId: v.optional(v.id("conversations")),
+    messageId: v.optional(v.id("messages")),
+    query: v.string(),
+    score: v.number(),
+    citedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_document_id", ["documentId"])
+    .index("by_chunk_id", ["chunkId"]),
 
   sources: defineTable({
     orgId: v.string(),
