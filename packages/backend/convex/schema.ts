@@ -1195,4 +1195,415 @@ export default defineSchema({
   })
     .index("by_org_date", ["orgId", "date"])
     .index("by_date", ["date"]),
+
+  // ─── Unified Inbox System ──────────────────────────────────────────────────
+  channels: defineTable({
+    orgId: v.string(),
+    
+    // Channel configuration
+    type: v.union(
+      v.literal("website_widget"),
+      v.literal("email"),
+      v.literal("whatsapp"),
+      v.literal("telegram"),
+      v.literal("instagram"),
+      v.literal("facebook_messenger"),
+      v.literal("sms"),
+      v.literal("slack"),
+      v.literal("discord")
+    ),
+    name: v.string(),
+    description: v.optional(v.string()),
+    
+    // Status
+    isActive: v.boolean(),
+    isConnected: v.boolean(),
+    
+    // Configuration
+    config: v.object({
+      // Email
+      imapHost: v.optional(v.string()),
+      imapPort: v.optional(v.number()),
+      smtpHost: v.optional(v.string()),
+      smtpPort: v.optional(v.number()),
+      email: v.optional(v.string()),
+      
+      // WhatsApp
+      phoneNumber: v.optional(v.string()),
+      businessAccountId: v.optional(v.string()),
+      
+      // Telegram
+      botToken: v.optional(v.string()),
+      
+      // Instagram/Facebook
+      pageId: v.optional(v.string()),
+      accessToken: v.optional(v.string()),
+      
+      // Widget
+      widgetId: v.optional(v.string()),
+      allowedDomains: v.optional(v.array(v.string())),
+    }),
+    
+    // Settings
+    settings: v.object({
+      autoReply: v.boolean(),
+      autoReplyMessage: v.optional(v.string()),
+      businessHours: v.optional(v.object({
+        enabled: v.boolean(),
+        timezone: v.string(),
+        schedule: v.array(v.object({
+          day: v.number(), // 0-6
+          start: v.string(), // HH:mm
+          end: v.string(), // HH:mm
+        })),
+      })),
+      routing: v.optional(v.object({
+        method: v.union(v.literal("round_robin"), v.literal("least_active"), v.literal("manual")),
+        assignToTeam: v.optional(v.string()),
+      })),
+    }),
+    
+    // Statistics
+    totalConversations: v.number(),
+    totalMessages: v.number(),
+    lastMessageAt: v.optional(v.number()),
+    
+    // Timestamps
+    connectedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_org_type", ["orgId", "type"])
+    .index("by_org_active", ["orgId", "isActive"]),
+
+  unified_conversations: defineTable({
+    orgId: v.string(),
+    
+    // Channel information
+    channelId: v.id("channels"),
+    channelType: v.string(),
+    externalId: v.optional(v.string()), // ID from external platform
+    
+    // Customer information
+    customerId: v.id("unified_customers"),
+    customerName: v.string(),
+    customerEmail: v.optional(v.string()),
+    customerPhone: v.optional(v.string()),
+    customerAvatar: v.optional(v.string()),
+    
+    // Conversation status
+    status: v.union(
+      v.literal("open"),
+      v.literal("pending"),
+      v.literal("resolved"),
+      v.literal("closed")
+    ),
+    
+    // Assignment
+    assignedTo: v.optional(v.string()), // User ID
+    assignedAt: v.optional(v.number()),
+    teamId: v.optional(v.string()),
+    
+    // Priority and categorization
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent")),
+    category: v.optional(v.string()),
+    tags: v.array(v.string()),
+    
+    // Message tracking
+    lastMessageText: v.string(),
+    lastMessageAt: v.number(),
+    lastMessageFrom: v.union(v.literal("customer"), v.literal("agent"), v.literal("bot")),
+    unreadCount: v.number(),
+    totalMessages: v.number(),
+    
+    // AI assistance
+    hasSentimentAnalysis: v.boolean(),
+    latestSentiment: v.optional(v.string()),
+    latestIntent: v.optional(v.string()),
+    aiSuggestions: v.optional(v.array(v.string())),
+    
+    // SLA tracking
+    firstResponseAt: v.optional(v.number()),
+    firstResponseTimeMs: v.optional(v.number()),
+    resolutionAt: v.optional(v.number()),
+    resolutionTimeMs: v.optional(v.number()),
+    slaDeadline: v.optional(v.number()),
+    
+    // Metadata
+    metadata: v.optional(v.object({})),
+    isArchived: v.boolean(),
+    isPinned: v.boolean(),
+    
+    // Timestamps
+    startedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_channel_id", ["channelId"])
+    .index("by_customer_id", ["customerId"])
+    .index("by_status", ["status"])
+    .index("by_assigned_to", ["assignedTo"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_org_channel", ["orgId", "channelId"])
+    .index("by_org_updated", ["orgId", "updatedAt"])
+    .index("by_org_priority", ["orgId", "priority"])
+    .index("by_org_unread", ["orgId", "unreadCount"])
+    .index("by_external_id", ["externalId"]),
+
+  unified_messages: defineTable({
+    orgId: v.string(),
+    conversationId: v.id("unified_conversations"),
+    channelId: v.id("channels"),
+    customerId: v.id("unified_customers"),
+    
+    // Message content
+    content: v.string(),
+    contentType: v.union(
+      v.literal("text"),
+      v.literal("image"),
+      v.literal("video"),
+      v.literal("audio"),
+      v.literal("file"),
+      v.literal("location"),
+      v.literal("contact")
+    ),
+    
+    // Sender information
+    senderType: v.union(v.literal("customer"), v.literal("agent"), v.literal("bot"), v.literal("system")),
+    senderId: v.optional(v.string()), // User ID for agents
+    senderName: v.string(),
+    
+    // Status
+    status: v.union(
+      v.literal("sending"),
+      v.literal("sent"),
+      v.literal("delivered"),
+      v.literal("read"),
+      v.literal("failed")
+    ),
+    
+    // Attachments
+    attachments: v.optional(v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      type: v.string(),
+      size: v.number(),
+      url: v.string(),
+      storageId: v.optional(v.id("_storage")),
+      thumbnail: v.optional(v.string()),
+    }))),
+    
+    // Reply context
+    replyToId: v.optional(v.id("unified_messages")),
+    isForwarded: v.optional(v.boolean()),
+    
+    // External platform
+    externalId: v.optional(v.string()),
+    externalMetadata: v.optional(v.object({})),
+    
+    // AI context
+    sentimentAnalysisId: v.optional(v.id("sentiment_analysis")),
+    
+    // Timestamps
+    sentAt: v.number(),
+    deliveredAt: v.optional(v.number()),
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_channel_id", ["channelId"])
+    .index("by_customer_id", ["customerId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_sent", ["conversationId", "sentAt"])
+    .index("by_external_id", ["externalId"]),
+
+  unified_customers: defineTable({
+    orgId: v.string(),
+    
+    // Primary identity
+    name: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    avatar: v.optional(v.string()),
+    
+    // Channel identities (for merging)
+    channelIdentities: v.array(v.object({
+      channelId: v.id("channels"),
+      channelType: v.string(),
+      externalId: v.string(),
+      username: v.optional(v.string()),
+      metadata: v.optional(v.object({})),
+    })),
+    
+    // Customer profile
+    company: v.optional(v.string()),
+    location: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    language: v.optional(v.string()),
+    
+    // Segmentation
+    tier: v.optional(v.union(
+      v.literal("standard"),
+      v.literal("premium"),
+      v.literal("vip"),
+      v.literal("enterprise")
+    )),
+    tags: v.array(v.string()),
+    
+    // Activity
+    totalConversations: v.number(),
+    totalMessages: v.number(),
+    firstSeenAt: v.number(),
+    lastSeenAt: v.number(),
+    lastChannelUsed: v.optional(v.id("channels")),
+    
+    // Sentiment history
+    overallSentiment: v.optional(v.string()),
+    avgSentimentScore: v.optional(v.number()),
+    
+    // Custom fields
+    customFields: v.optional(v.object({})),
+    notes: v.optional(v.string()),
+    
+    // Lifecycle
+    isBlocked: v.boolean(),
+    blockedReason: v.optional(v.string()),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_email", ["email"])
+    .index("by_phone", ["phone"])
+    .index("by_org_email", ["orgId", "email"])
+    .index("by_org_phone", ["orgId", "phone"])
+    .index("by_org_tier", ["orgId", "tier"]),
+
+  conversation_assignments: defineTable({
+    orgId: v.string(),
+    conversationId: v.id("unified_conversations"),
+    
+    // Assignment details
+    assignedTo: v.string(), // User ID
+    assignedBy: v.optional(v.string()), // User ID who assigned
+    assignmentMethod: v.union(
+      v.literal("manual"),
+      v.literal("round_robin"),
+      v.literal("least_active"),
+      v.literal("auto_routing")
+    ),
+    
+    // Status
+    status: v.union(v.literal("active"), v.literal("completed"), v.literal("transferred")),
+    
+    // Timestamps
+    assignedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    
+    // Performance tracking
+    firstResponseAt: v.optional(v.number()),
+    avgResponseTimeMs: v.optional(v.number()),
+    messagesHandled: v.number(),
+  })
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_assigned_to", ["assignedTo"])
+    .index("by_org_assigned", ["orgId", "assignedTo"])
+    .index("by_org_status", ["orgId", "status"]),
+
+  conversation_transfers: defineTable({
+    orgId: v.string(),
+    conversationId: v.id("unified_conversations"),
+    
+    // Transfer details
+    fromUserId: v.optional(v.string()),
+    toUserId: v.string(),
+    transferredBy: v.string(),
+    
+    // Reason
+    reason: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    
+    // Status
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined")),
+    
+    // Timestamps
+    requestedAt: v.number(),
+    respondedAt: v.optional(v.number()),
+  })
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_to_user", ["toUserId"])
+    .index("by_org_to_user", ["orgId", "toUserId"]),
+
+  typing_indicators: defineTable({
+    conversationId: v.id("unified_conversations"),
+    userId: v.string(),
+    userName: v.string(),
+    userType: v.union(v.literal("agent"), v.literal("customer")),
+    isTyping: v.boolean(),
+    lastUpdatedAt: v.number(),
+  })
+    .index("by_conversation_id", ["conversationId"]),
+
+  inbox_filters: defineTable({
+    orgId: v.string(),
+    userId: v.string(),
+    
+    // Filter configuration
+    name: v.string(),
+    description: v.optional(v.string()),
+    
+    // Filter criteria
+    channels: v.optional(v.array(v.id("channels"))),
+    statuses: v.optional(v.array(v.string())),
+    priorities: v.optional(v.array(v.string())),
+    assignedTo: v.optional(v.union(v.literal("me"), v.literal("unassigned"), v.literal("team"))),
+    tags: v.optional(v.array(v.string())),
+    hasUnread: v.optional(v.boolean()),
+    
+    // Sort options
+    sortBy: v.union(
+      v.literal("lastMessageAt"),
+      v.literal("createdAt"),
+      v.literal("priority"),
+      v.literal("unreadCount")
+    ),
+    sortOrder: v.union(v.literal("asc"), v.literal("desc")),
+    
+    // Display
+    isDefault: v.boolean(),
+    isPinned: v.boolean(),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_org_user", ["orgId", "userId"]),
+
+  conversation_search_index: defineTable({
+    orgId: v.string(),
+    conversationId: v.id("unified_conversations"),
+    
+    // Searchable content
+    searchableText: v.string(), // Aggregated text from messages
+    customerName: v.string(),
+    customerEmail: v.optional(v.string()),
+    tags: v.array(v.string()),
+    
+    // Metadata for search results
+    lastMessageAt: v.number(),
+    channelType: v.string(),
+    
+    // Timestamps
+    indexedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .searchIndex("search_content", {
+      searchField: "searchableText",
+      filterFields: ["orgId", "channelType"],
+    }),
 });
