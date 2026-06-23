@@ -1606,4 +1606,279 @@ export default defineSchema({
       searchField: "searchableText",
       filterFields: ["orgId", "channelType"],
     }),
+
+  // ─── Customer Activity Timeline ────────────────────────────────────────────
+  activity_events: defineTable({
+    orgId: v.string(),
+    customerId: v.id("unified_customers"),
+    
+    // Event classification
+    eventType: v.union(
+      v.literal("chat_message"),
+      v.literal("call"),
+      v.literal("email"),
+      v.literal("note"),
+      v.literal("billing_event"),
+      v.literal("subscription_change"),
+      v.literal("status_change"),
+      v.literal("assignment_change"),
+      v.literal("tag_added"),
+      v.literal("tag_removed"),
+      v.literal("merge"),
+      v.literal("profile_update"),
+      v.literal("document_uploaded"),
+      v.literal("payment_received"),
+      v.literal("refund_issued")
+    ),
+    eventCategory: v.union(
+      v.literal("communication"),
+      v.literal("system"),
+      v.literal("billing"),
+      v.literal("support")
+    ),
+    
+    // Event details
+    title: v.string(),
+    description: v.optional(v.string()),
+    
+    // Event data (flexible JSON)
+    eventData: v.optional(v.object({
+      // Chat message
+      messageId: v.optional(v.id("unified_messages")),
+      messageContent: v.optional(v.string()),
+      conversationId: v.optional(v.id("unified_conversations")),
+      channelType: v.optional(v.string()),
+      
+      // Call
+      callDuration: v.optional(v.number()),
+      callDirection: v.optional(v.union(v.literal("inbound"), v.literal("outbound"))),
+      callStatus: v.optional(v.string()),
+      recordingUrl: v.optional(v.string()),
+      
+      // Email
+      emailSubject: v.optional(v.string()),
+      emailBody: v.optional(v.string()),
+      emailDirection: v.optional(v.union(v.literal("sent"), v.literal("received"))),
+      
+      // Note
+      noteContent: v.optional(v.string()),
+      noteType: v.optional(v.string()),
+      
+      // Billing
+      amount: v.optional(v.number()),
+      currency: v.optional(v.string()),
+      invoiceId: v.optional(v.string()),
+      transactionId: v.optional(v.string()),
+      
+      // Subscription
+      subscriptionId: v.optional(v.string()),
+      planName: v.optional(v.string()),
+      previousPlan: v.optional(v.string()),
+      newPlan: v.optional(v.string()),
+      
+      // Status/Assignment
+      previousValue: v.optional(v.string()),
+      newValue: v.optional(v.string()),
+      
+      // Generic
+      metadata: v.optional(v.object({})),
+    })),
+    
+    // Actor (who performed the action)
+    actorType: v.union(
+      v.literal("customer"),
+      v.literal("agent"),
+      v.literal("system"),
+      v.literal("api")
+    ),
+    actorId: v.optional(v.string()),
+    actorName: v.string(),
+    
+    // Related entities
+    conversationId: v.optional(v.id("unified_conversations")),
+    messageId: v.optional(v.id("unified_messages")),
+    
+    // Visibility
+    isVisible: v.boolean(), // Show in timeline
+    isInternal: v.boolean(), // Internal note/event
+    
+    // Rich content
+    attachments: v.optional(v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      type: v.string(),
+      size: v.number(),
+      url: v.string(),
+    }))),
+    
+    // Timestamps
+    occurredAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_customer_id", ["customerId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_customer_occurred", ["customerId", "occurredAt"])
+    .index("by_org_occurred", ["orgId", "occurredAt"])
+    .index("by_event_type", ["eventType"])
+    .index("by_event_category", ["eventCategory"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_org_type_occurred", ["orgId", "eventType", "occurredAt"]),
+
+  activity_notes: defineTable({
+    orgId: v.string(),
+    customerId: v.id("unified_customers"),
+    conversationId: v.optional(v.id("unified_conversations")),
+    
+    // Note content
+    content: v.string(),
+    noteType: v.union(
+      v.literal("general"),
+      v.literal("internal"),
+      v.literal("meeting"),
+      v.literal("followup"),
+      v.literal("resolution")
+    ),
+    
+    // Author
+    authorId: v.string(),
+    authorName: v.string(),
+    
+    // Metadata
+    isPinned: v.boolean(),
+    isInternal: v.boolean(),
+    
+    // Attachments
+    attachments: v.optional(v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      type: v.string(),
+      size: v.number(),
+      url: v.string(),
+    }))),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_customer_id", ["customerId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_customer_created", ["customerId", "createdAt"]),
+
+  call_logs: defineTable({
+    orgId: v.string(),
+    customerId: v.id("unified_customers"),
+    conversationId: v.optional(v.id("unified_conversations")),
+    
+    // Call details
+    direction: v.union(v.literal("inbound"), v.literal("outbound")),
+    status: v.union(
+      v.literal("completed"),
+      v.literal("missed"),
+      v.literal("voicemail"),
+      v.literal("busy"),
+      v.literal("failed")
+    ),
+    
+    // Duration
+    durationSeconds: v.number(),
+    
+    // Participants
+    fromNumber: v.string(),
+    toNumber: v.string(),
+    agentId: v.optional(v.string()),
+    agentName: v.optional(v.string()),
+    
+    // Recording
+    recordingUrl: v.optional(v.string()),
+    recordingDuration: v.optional(v.number()),
+    
+    // Transcription
+    transcription: v.optional(v.string()),
+    
+    // External IDs
+    externalCallId: v.optional(v.string()),
+    
+    // Notes
+    notes: v.optional(v.string()),
+    
+    // Timestamps
+    startedAt: v.number(),
+    endedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_customer_id", ["customerId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_org_started", ["orgId", "startedAt"])
+    .index("by_external_id", ["externalCallId"]),
+
+  email_logs: defineTable({
+    orgId: v.string(),
+    customerId: v.id("unified_customers"),
+    conversationId: v.optional(v.id("unified_conversations")),
+    
+    // Email details
+    direction: v.union(v.literal("sent"), v.literal("received")),
+    subject: v.string(),
+    body: v.string(),
+    bodyHtml: v.optional(v.string()),
+    
+    // Participants
+    from: v.string(),
+    to: v.array(v.string()),
+    cc: v.optional(v.array(v.string())),
+    bcc: v.optional(v.array(v.string())),
+    
+    // Tracking
+    opened: v.boolean(),
+    openedAt: v.optional(v.number()),
+    clicked: v.boolean(),
+    clickedAt: v.optional(v.number()),
+    
+    // Attachments
+    attachments: v.optional(v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      type: v.string(),
+      size: v.number(),
+      url: v.string(),
+    }))),
+    
+    // External IDs
+    externalMessageId: v.optional(v.string()),
+    threadId: v.optional(v.string()),
+    
+    // Timestamps
+    sentAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_customer_id", ["customerId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_org_sent", ["orgId", "sentAt"])
+    .index("by_thread_id", ["threadId"]),
+
+  timeline_filters: defineTable({
+    userId: v.string(),
+    orgId: v.string(),
+    
+    // Filter configuration
+    name: v.string(),
+    isDefault: v.boolean(),
+    
+    // Filter criteria
+    eventTypes: v.optional(v.array(v.string())),
+    eventCategories: v.optional(v.array(v.string())),
+    dateFrom: v.optional(v.number()),
+    dateTo: v.optional(v.number()),
+    actorTypes: v.optional(v.array(v.string())),
+    showInternal: v.boolean(),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_org_user", ["orgId", "userId"]),
 });
