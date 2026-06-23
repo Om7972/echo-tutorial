@@ -1881,4 +1881,327 @@ export default defineSchema({
   })
     .index("by_user_id", ["userId"])
     .index("by_org_user", ["orgId", "userId"]),
+
+  // ─── Internal Collaboration System ─────────────────────────────────────────
+  collaboration_notes: defineTable({
+    orgId: v.string(),
+    conversationId: v.optional(v.id("unified_conversations")),
+    customerId: v.optional(v.id("unified_customers")),
+    
+    // Note content
+    content: v.string(), // Rich text / Markdown
+    contentFormat: v.union(v.literal("markdown"), v.literal("html"), v.literal("plain")),
+    plainText: v.string(), // For search
+    
+    // Author
+    authorId: v.string(),
+    authorName: v.string(),
+    
+    // Visibility
+    visibility: v.union(
+      v.literal("private"), // Only author
+      v.literal("team"), // All team members
+      v.literal("mentioned"), // Author + mentioned users
+      v.literal("assigned") // Author + assigned users
+    ),
+    
+    // Organization
+    isPinned: v.boolean(),
+    tags: v.array(v.string()),
+    category: v.optional(v.string()),
+    
+    // Mentions
+    mentions: v.array(v.string()), // User IDs
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    deletedAt: v.optional(v.number()), // Soft delete
+    
+    // Metadata
+    editHistory: v.optional(v.array(v.object({
+      editedAt: v.number(),
+      editedBy: v.string(),
+      previousContent: v.string(),
+    }))),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_customer_id", ["customerId"])
+    .index("by_author_id", ["authorId"])
+    .index("by_org_created", ["orgId", "createdAt"])
+    .index("by_org_pinned", ["orgId", "isPinned"])
+    .searchIndex("search_content", {
+      searchField: "plainText",
+      filterFields: ["orgId", "authorId"],
+    }),
+
+  collaboration_assignments: defineTable({
+    orgId: v.string(),
+    conversationId: v.id("unified_conversations"),
+    
+    // Assignment details
+    assignedTo: v.string(), // User ID
+    assignedBy: v.string(), // User ID
+    assignmentType: v.union(
+      v.literal("owner"), // Primary owner
+      v.literal("collaborator"), // Secondary helper
+      v.literal("watcher"), // Just watching
+      v.literal("reviewer") // Reviews before close
+    ),
+    
+    // Status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("declined"),
+      v.literal("completed")
+    ),
+    acceptedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    
+    // Context
+    note: v.optional(v.string()),
+    dueDate: v.optional(v.number()),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent")),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_assigned_to", ["assignedTo"])
+    .index("by_assigned_by", ["assignedBy"])
+    .index("by_org_assigned_to", ["orgId", "assignedTo"])
+    .index("by_status", ["status"])
+    .index("by_org_status", ["orgId", "status"]),
+
+  collaboration_mentions: defineTable({
+    orgId: v.string(),
+    noteId: v.optional(v.id("collaboration_notes")),
+    messageId: v.optional(v.id("unified_messages")),
+    conversationId: v.optional(v.id("unified_conversations")),
+    
+    // Mention details
+    mentionedUserId: v.string(),
+    mentionedBy: v.string(),
+    mentionContext: v.string(), // Snippet of text around mention
+    
+    // Status
+    isRead: v.boolean(),
+    readAt: v.optional(v.number()),
+    isResolved: v.boolean(),
+    resolvedAt: v.optional(v.number()),
+    
+    // Timestamps
+    createdAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_mentioned_user", ["mentionedUserId"])
+    .index("by_org_mentioned_user", ["orgId", "mentionedUserId"])
+    .index("by_note_id", ["noteId"])
+    .index("by_message_id", ["messageId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_user_read", ["mentionedUserId", "isRead"]),
+
+  collaboration_notifications: defineTable({
+    orgId: v.string(),
+    userId: v.string(),
+    
+    // Notification type
+    type: v.union(
+      v.literal("mention"),
+      v.literal("assignment"),
+      v.literal("note_reply"),
+      v.literal("status_change"),
+      v.literal("due_date"),
+      v.literal("escalation"),
+      v.literal("approval_request")
+    ),
+    
+    // Content
+    title: v.string(),
+    message: v.string(),
+    
+    // Related entities
+    conversationId: v.optional(v.id("unified_conversations")),
+    noteId: v.optional(v.id("collaboration_notes")),
+    assignmentId: v.optional(v.id("collaboration_assignments")),
+    mentionId: v.optional(v.id("collaboration_mentions")),
+    
+    // Actor
+    actorId: v.optional(v.string()),
+    actorName: v.optional(v.string()),
+    
+    // Status
+    isRead: v.boolean(),
+    readAt: v.optional(v.number()),
+    
+    // Action
+    actionUrl: v.optional(v.string()),
+    actionText: v.optional(v.string()),
+    
+    // Timestamps
+    createdAt: v.number(),
+    expiresAt: v.optional(v.number()),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_user_id", ["userId"])
+    .index("by_org_user", ["orgId", "userId"])
+    .index("by_user_read", ["userId", "isRead"])
+    .index("by_type", ["type"])
+    .index("by_conversation_id", ["conversationId"]),
+
+  collaboration_activity: defineTable({
+    orgId: v.string(),
+    conversationId: v.optional(v.id("unified_conversations")),
+    
+    // Activity details
+    activityType: v.union(
+      v.literal("note_created"),
+      v.literal("note_updated"),
+      v.literal("note_deleted"),
+      v.literal("note_pinned"),
+      v.literal("note_unpinned"),
+      v.literal("user_mentioned"),
+      v.literal("assignment_created"),
+      v.literal("assignment_accepted"),
+      v.literal("assignment_declined"),
+      v.literal("assignment_completed"),
+      v.literal("tag_added"),
+      v.literal("tag_removed"),
+      v.literal("permission_changed")
+    ),
+    
+    // Actor
+    actorId: v.string(),
+    actorName: v.string(),
+    
+    // Target
+    targetType: v.optional(v.string()), // "note", "assignment", "user"
+    targetId: v.optional(v.string()),
+    
+    // Details
+    description: v.string(),
+    metadata: v.optional(v.object({})),
+    
+    // Changes (for audit)
+    changes: v.optional(v.object({
+      before: v.optional(v.any()),
+      after: v.optional(v.any()),
+      fields: v.optional(v.array(v.string())),
+    })),
+    
+    // Timestamps
+    timestamp: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_actor_id", ["actorId"])
+    .index("by_org_timestamp", ["orgId", "timestamp"])
+    .index("by_activity_type", ["activityType"]),
+
+  collaboration_permissions: defineTable({
+    orgId: v.string(),
+    
+    // Subject (who has permission)
+    userId: v.optional(v.string()),
+    roleId: v.optional(v.string()),
+    teamId: v.optional(v.string()),
+    
+    // Resource (what they have permission on)
+    resourceType: v.union(
+      v.literal("note"),
+      v.literal("conversation"),
+      v.literal("customer"),
+      v.literal("team")
+    ),
+    resourceId: v.string(),
+    
+    // Permission level
+    permission: v.union(
+      v.literal("view"),
+      v.literal("comment"),
+      v.literal("edit"),
+      v.literal("delete"),
+      v.literal("admin")
+    ),
+    
+    // Grant details
+    grantedBy: v.string(),
+    grantedAt: v.number(),
+    expiresAt: v.optional(v.number()),
+    
+    // Timestamps
+    createdAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_user_id", ["userId"])
+    .index("by_org_user", ["orgId", "userId"])
+    .index("by_resource", ["resourceType", "resourceId"])
+    .index("by_org_resource", ["orgId", "resourceType", "resourceId"]),
+
+  collaboration_tags: defineTable({
+    orgId: v.string(),
+    
+    // Tag details
+    name: v.string(),
+    color: v.string(), // Hex color
+    description: v.optional(v.string()),
+    
+    // Category
+    category: v.optional(v.string()), // "priority", "status", "topic"
+    
+    // Usage
+    usageCount: v.number(),
+    
+    // Creator
+    createdBy: v.string(),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_org_name", ["orgId", "name"])
+    .index("by_category", ["category"]),
+
+  collaboration_audit: defineTable({
+    orgId: v.string(),
+    
+    // Audit details
+    action: v.string(), // "create", "update", "delete", "view"
+    resourceType: v.string(), // "note", "assignment", "permission"
+    resourceId: v.string(),
+    
+    // Actor
+    actorId: v.string(),
+    actorName: v.string(),
+    actorIp: v.optional(v.string()),
+    actorUserAgent: v.optional(v.string()),
+    
+    // Details
+    description: v.string(),
+    changes: v.optional(v.object({
+      before: v.optional(v.any()),
+      after: v.optional(v.any()),
+    })),
+    
+    // Context
+    conversationId: v.optional(v.id("unified_conversations")),
+    sessionId: v.optional(v.string()),
+    
+    // Result
+    success: v.boolean(),
+    errorMessage: v.optional(v.string()),
+    
+    // Timestamps
+    timestamp: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_actor_id", ["actorId"])
+    .index("by_org_timestamp", ["orgId", "timestamp"])
+    .index("by_resource", ["resourceType", "resourceId"])
+    .index("by_action", ["action"]),
 });

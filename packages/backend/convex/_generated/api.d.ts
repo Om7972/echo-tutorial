@@ -15,6 +15,13 @@ import type {
 } from "convex/server";
 import type * as aiFunctions from "../aiFunctions.js";
 import type * as analytics from "../analytics.js";
+import type * as collaboration_activity from "../collaboration/activity.js";
+import type * as collaboration_assignments from "../collaboration/assignments.js";
+import type * as collaboration_audit from "../collaboration/audit.js";
+import type * as collaboration_notes from "../collaboration/notes.js";
+import type * as collaboration_notifications from "../collaboration/notifications.js";
+import type * as collaboration_permissions from "../collaboration/permissions.js";
+import type * as collaboration_tags from "../collaboration/tags.js";
 import type * as conversations from "../conversations.js";
 import type * as cron from "../cron.js";
 import type * as cronFunctions from "../cronFunctions.js";
@@ -58,6 +65,13 @@ import type * as widget from "../widget.js";
 declare const fullApi: ApiFromModules<{
   aiFunctions: typeof aiFunctions;
   analytics: typeof analytics;
+  "collaboration/activity": typeof collaboration_activity;
+  "collaboration/assignments": typeof collaboration_assignments;
+  "collaboration/audit": typeof collaboration_audit;
+  "collaboration/notes": typeof collaboration_notes;
+  "collaboration/notifications": typeof collaboration_notifications;
+  "collaboration/permissions": typeof collaboration_permissions;
+  "collaboration/tags": typeof collaboration_tags;
   conversations: typeof conversations;
   cron: typeof cron;
   cronFunctions: typeof cronFunctions;
