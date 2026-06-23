@@ -937,4 +937,262 @@ export default defineSchema({
   })
     .index("by_org_date", ["orgId", "date"])
     .index("by_date", ["date"]),
+
+  // ─── AI Sentiment & Intent Analysis ────────────────────────────────────────
+  sentiment_analysis: defineTable({
+    orgId: v.string(),
+    conversationId: v.id("conversations"),
+    messageId: v.id("messages"),
+    
+    // Sentiment detection
+    sentiment: v.union(
+      v.literal("positive"),
+      v.literal("negative"),
+      v.literal("neutral"),
+      v.literal("angry"),
+      v.literal("urgent"),
+      v.literal("confused"),
+      v.literal("frustrated"),
+      v.literal("satisfied")
+    ),
+    sentimentScore: v.number(), // -1 to 1
+    sentimentConfidence: v.number(), // 0 to 1
+    
+    // Intent classification
+    intent: v.union(
+      v.literal("refund"),
+      v.literal("pricing"),
+      v.literal("technical_issue"),
+      v.literal("feature_request"),
+      v.literal("complaint"),
+      v.literal("general_inquiry"),
+      v.literal("feedback"),
+      v.literal("cancel_subscription"),
+      v.literal("billing_issue"),
+      v.literal("account_issue")
+    ),
+    intentScore: v.number(), // 0 to 1 (confidence)
+    intentConfidence: v.number(), // 0 to 1
+    secondaryIntents: v.optional(v.array(v.object({
+      intent: v.string(),
+      score: v.number(),
+    }))),
+    
+    // Message content
+    messageContent: v.string(),
+    messageType: v.union(v.literal("user"), v.literal("assistant")),
+    
+    // Analysis metadata
+    analyzedBy: v.union(v.literal("openai"), v.literal("anthropic")),
+    model: v.string(),
+    tokensUsed: v.number(),
+    costUSD: v.number(),
+    
+    // Auto-trigger tracking
+    triggeredHandoff: v.boolean(),
+    triggeredPriorityIncrease: v.boolean(),
+    triggeredVIPRouting: v.boolean(),
+    triggerReason: v.optional(v.string()),
+    
+    // Timestamps
+    analyzedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_message_id", ["messageId"])
+    .index("by_sentiment", ["sentiment"])
+    .index("by_intent", ["intent"])
+    .index("by_org_sentiment", ["orgId", "sentiment"])
+    .index("by_org_intent", ["orgId", "intent"])
+    .index("by_org_date", ["orgId", "analyzedAt"])
+    .index("by_conversation_date", ["conversationId", "analyzedAt"]),
+
+  sentiment_triggers: defineTable({
+    orgId: v.string(),
+    conversationId: v.id("conversations"),
+    sentimentAnalysisId: v.id("sentiment_analysis"),
+    
+    // Trigger type
+    triggerType: v.union(
+      v.literal("human_handoff"),
+      v.literal("priority_increase"),
+      v.literal("vip_routing"),
+      v.literal("escalation"),
+      v.literal("supervisor_alert")
+    ),
+    
+    // Trigger reason
+    reason: v.string(),
+    conditions: v.array(v.object({
+      type: v.string(),
+      value: v.any(),
+      threshold: v.optional(v.number()),
+    })),
+    
+    // Status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("executed"),
+      v.literal("failed"),
+      v.literal("cancelled")
+    ),
+    
+    // Execution
+    executedAt: v.optional(v.number()),
+    executedBy: v.optional(v.string()),
+    executionResult: v.optional(v.any()),
+    error: v.optional(v.string()),
+    
+    // Timestamps
+    createdAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_sentiment_analysis_id", ["sentimentAnalysisId"])
+    .index("by_trigger_type", ["triggerType"])
+    .index("by_status", ["status"])
+    .index("by_org_status", ["orgId", "status"]),
+
+  sentiment_trends: defineTable({
+    orgId: v.string(),
+    date: v.string(), // YYYY-MM-DD
+    hour: v.optional(v.number()), // 0-23 for hourly trends
+    
+    // Sentiment counts
+    positiveCount: v.number(),
+    negativeCount: v.number(),
+    neutralCount: v.number(),
+    angryCount: v.number(),
+    urgentCount: v.number(),
+    confusedCount: v.number(),
+    frustratedCount: v.number(),
+    satisfiedCount: v.number(),
+    
+    // Average scores
+    avgSentimentScore: v.number(), // -1 to 1
+    avgConfidence: v.number(), // 0 to 1
+    
+    // Intent counts
+    refundCount: v.number(),
+    pricingCount: v.number(),
+    technicalIssueCount: v.number(),
+    featureRequestCount: v.number(),
+    complaintCount: v.number(),
+    generalInquiryCount: v.number(),
+    
+    // Trigger counts
+    handoffTriggered: v.number(),
+    priorityIncreased: v.number(),
+    vipRouted: v.number(),
+    
+    // Totals
+    totalAnalyses: v.number(),
+    totalConversations: v.number(),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_date", ["orgId", "date"])
+    .index("by_org_date_hour", ["orgId", "date", "hour"])
+    .index("by_date", ["date"]),
+
+  sentiment_rules: defineTable({
+    orgId: v.string(),
+    
+    // Rule configuration
+    name: v.string(),
+    description: v.optional(v.string()),
+    isActive: v.boolean(),
+    priority: v.number(), // Higher = executed first
+    
+    // Conditions
+    conditions: v.object({
+      sentiments: v.optional(v.array(v.string())),
+      intents: v.optional(v.array(v.string())),
+      minSentimentScore: v.optional(v.number()),
+      maxSentimentScore: v.optional(v.number()),
+      minConfidence: v.optional(v.number()),
+      consecutiveNegative: v.optional(v.number()), // Count of consecutive negative messages
+      customerTier: v.optional(v.array(v.string())), // "vip", "premium", "standard"
+    }),
+    
+    // Actions
+    actions: v.object({
+      triggerHandoff: v.boolean(),
+      increasePriority: v.optional(v.union(
+        v.literal("low"),
+        v.literal("medium"),
+        v.literal("high")
+      )),
+      routeToVIP: v.boolean(),
+      notifyTeam: v.optional(v.array(v.string())), // User IDs
+      addTags: v.optional(v.array(v.string())),
+      assignTo: v.optional(v.string()), // User ID
+    }),
+    
+    // Metadata
+    createdBy: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    executionCount: v.number(),
+    lastExecutedAt: v.optional(v.number()),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_org_active", ["orgId", "isActive"])
+    .index("by_priority", ["priority"]),
+
+  sentiment_analytics: defineTable({
+    orgId: v.string(),
+    date: v.string(), // YYYY-MM-DD
+    
+    // Overall metrics
+    totalMessages: v.number(),
+    analyzedMessages: v.number(),
+    analysisRate: v.number(), // percentage
+    
+    // Sentiment distribution
+    sentimentDistribution: v.object({
+      positive: v.number(),
+      negative: v.number(),
+      neutral: v.number(),
+      angry: v.number(),
+      urgent: v.number(),
+      confused: v.number(),
+      frustrated: v.number(),
+      satisfied: v.number(),
+    }),
+    
+    // Intent distribution
+    intentDistribution: v.object({
+      refund: v.number(),
+      pricing: v.number(),
+      technical_issue: v.number(),
+      feature_request: v.number(),
+      complaint: v.number(),
+      general_inquiry: v.number(),
+      other: v.number(),
+    }),
+    
+    // Performance metrics
+    avgAnalysisTimeMs: v.number(),
+    avgConfidence: v.number(),
+    
+    // Trigger metrics
+    totalTriggers: v.number(),
+    handoffRate: v.number(), // percentage
+    priorityIncreaseRate: v.number(),
+    vipRoutingRate: v.number(),
+    
+    // Cost tracking
+    totalCostUSD: v.number(),
+    avgCostPerAnalysis: v.number(),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_date", ["orgId", "date"])
+    .index("by_date", ["date"]),
 });
