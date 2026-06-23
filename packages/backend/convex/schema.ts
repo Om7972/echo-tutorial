@@ -631,4 +631,310 @@ export default defineSchema({
     .index("by_stripe_event_id", ["stripeEventId"])
     .index("by_type", ["type"])
     .index("by_processed", ["processed"]),
+
+  // ─── Long-Term AI Memory System ───────────────────────────────────────────
+  conversation_memories: defineTable({
+    conversationId: v.id("conversations"),
+    orgId: v.string(),
+    userId: v.optional(v.string()), // authenticated user or null for visitors
+    visitorId: v.optional(v.string()), // for anonymous visitors
+    
+    // Memory metadata
+    type: v.union(
+      v.literal("short_term"),  // last N messages
+      v.literal("long_term"),   // summarized older conversations
+      v.literal("semantic")     // embeddings-based memory
+    ),
+    
+    // Content
+    content: v.string(), // raw text or summary
+    tokenCount: v.number(),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastAccessedAt: v.number(),
+    expiresAt: v.optional(v.number()), // for automatic expiration
+    
+    // Usage tracking
+    accessCount: v.number(),
+    relevanceScore: v.optional(v.number()), // 0-1, decays over time
+    
+    // References
+    messageIds: v.optional(v.array(v.id("messages"))), // source messages
+    summaryOf: v.optional(v.id("conversation_memories")), // if this is a summary of another memory
+    
+    // Metadata
+    metadata: v.optional(v.object({
+      sentiment: v.optional(v.string()), // "positive", "neutral", "negative"
+      topics: v.optional(v.array(v.string())),
+      entities: v.optional(v.array(v.string())),
+      language: v.optional(v.string()),
+    })),
+  })
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_user_id", ["userId"])
+    .index("by_visitor_id", ["visitorId"])
+    .index("by_type", ["type"])
+    .index("by_expires_at", ["expiresAt"])
+    .index("by_org_type", ["orgId", "type"])
+    .index("by_conversation_type", ["conversationId", "type"])
+    .index("by_last_accessed", ["lastAccessedAt"]),
+
+  memory_chunks: defineTable({
+    memoryId: v.id("conversation_memories"),
+    conversationId: v.id("conversations"),
+    orgId: v.string(),
+    
+    // Chunk content
+    text: v.string(),
+    index: v.number(), // position in sequence
+    tokenCount: v.number(),
+    
+    // Context window
+    previousChunkId: v.optional(v.id("memory_chunks")),
+    nextChunkId: v.optional(v.id("memory_chunks")),
+    
+    // Timestamps
+    createdAt: v.number(),
+    
+    // Metadata
+    metadata: v.optional(v.object({})),
+  })
+    .index("by_memory_id", ["memoryId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_memory_index", ["memoryId", "index"]),
+
+  memory_embeddings: defineTable({
+    memoryId: v.id("conversation_memories"),
+    chunkId: v.optional(v.id("memory_chunks")),
+    conversationId: v.id("conversations"),
+    orgId: v.string(),
+    
+    // Embedding data
+    embedding: v.array(v.float64()),
+    model: v.string(), // "text-embedding-3-small", "text-embedding-3-large"
+    dimensions: v.number(),
+    
+    // Source content (for context)
+    sourceText: v.string(),
+    
+    // Timestamps
+    createdAt: v.number(),
+    
+    // Usage tracking
+    lastUsedAt: v.optional(v.number()),
+    useCount: v.number(),
+  })
+    .vectorIndex("by_embedding", {
+      vectorField: "embedding",
+      dimensions: 1536,
+      filterFields: ["orgId", "conversationId"],
+    })
+    .index("by_memory_id", ["memoryId"])
+    .index("by_chunk_id", ["chunkId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_org_id", ["orgId"]),
+
+  memory_summaries: defineTable({
+    conversationId: v.id("conversations"),
+    orgId: v.string(),
+    
+    // Summary content
+    summary: v.string(),
+    summaryType: v.union(
+      v.literal("rolling"),     // continuous summary of conversation
+      v.literal("periodic"),    // summary of time period
+      v.literal("thematic"),    // summary of specific topic
+      v.literal("final")        // final summary when conversation closes
+    ),
+    
+    // Source information
+    sourceMemoryIds: v.array(v.id("conversation_memories")),
+    messageCount: v.number(),
+    timeRangeStart: v.number(),
+    timeRangeEnd: v.number(),
+    
+    // Content analysis
+    keyPoints: v.array(v.string()),
+    actionItems: v.optional(v.array(v.string())),
+    decisions: v.optional(v.array(v.string())),
+    
+    // Customer insights
+    customerProfile: v.optional(v.object({
+      name: v.optional(v.string()),
+      email: v.optional(v.string()),
+      company: v.optional(v.string()),
+      preferences: v.optional(v.array(v.string())),
+      painPoints: v.optional(v.array(v.string())),
+      goals: v.optional(v.array(v.string())),
+    })),
+    
+    // Purchase/Product context
+    purchaseHistory: v.optional(v.array(v.object({
+      product: v.string(),
+      date: v.optional(v.number()),
+      amount: v.optional(v.number()),
+      status: v.optional(v.string()),
+    }))),
+    
+    // Issues tracking
+    issuesEncountered: v.optional(v.array(v.object({
+      issue: v.string(),
+      severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+      status: v.union(v.literal("open"), v.literal("resolved"), v.literal("escalated")),
+      timestamp: v.number(),
+    }))),
+    
+    // Sentiment analysis
+    overallSentiment: v.optional(v.string()), // "positive", "neutral", "negative", "mixed"
+    sentimentScore: v.optional(v.number()), // -1 to 1
+    sentimentTrend: v.optional(v.array(v.object({
+      timestamp: v.number(),
+      score: v.number(),
+    }))),
+    
+    // AI generation metadata
+    generatedBy: v.union(v.literal("openai"), v.literal("anthropic")),
+    model: v.string(),
+    tokensUsed: v.number(),
+    costUSD: v.number(),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    
+    // Version control
+    version: v.number(),
+    previousVersionId: v.optional(v.id("memory_summaries")),
+  })
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_summary_type", ["summaryType"])
+    .index("by_org_conversation", ["orgId", "conversationId"])
+    .index("by_time_range", ["timeRangeStart", "timeRangeEnd"]),
+
+  memory_retrieval_logs: defineTable({
+    conversationId: v.id("conversations"),
+    orgId: v.string(),
+    
+    // Query information
+    query: v.string(),
+    queryEmbedding: v.optional(v.array(v.float64())),
+    
+    // Retrieval strategy
+    strategy: v.union(
+      v.literal("recency"),     // most recent memories
+      v.literal("semantic"),    // vector similarity
+      v.literal("hybrid"),      // combined approach
+      v.literal("context_ranked") // ranked by relevance
+    ),
+    
+    // Results
+    memoriesRetrieved: v.array(v.id("conversation_memories")),
+    relevanceScores: v.array(v.number()),
+    
+    // Performance metrics
+    retrievalTimeMs: v.number(),
+    tokensRetrieved: v.number(),
+    
+    // Timestamps
+    timestamp: v.number(),
+  })
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_timestamp", ["timestamp"])
+    .index("by_strategy", ["strategy"]),
+
+  memory_jobs: defineTable({
+    orgId: v.string(),
+    conversationId: v.optional(v.id("conversations")),
+    
+    // Job configuration
+    jobType: v.union(
+      v.literal("summarize"),
+      v.literal("generate_embeddings"),
+      v.literal("expire_memories"),
+      v.literal("consolidate"),
+      v.literal("analyze_sentiment")
+    ),
+    
+    // Status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("cancelled")
+    ),
+    
+    // Progress tracking
+    progress: v.number(), // 0-100
+    totalItems: v.optional(v.number()),
+    processedItems: v.optional(v.number()),
+    
+    // Results
+    result: v.optional(v.any()),
+    error: v.optional(v.string()),
+    
+    // Resource usage
+    tokensUsed: v.optional(v.number()),
+    costUSD: v.optional(v.number()),
+    
+    // Timestamps
+    scheduledAt: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    
+    // Retry logic
+    retryCount: v.number(),
+    maxRetries: v.number(),
+    
+    // Priority
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_status", ["status"])
+    .index("by_job_type", ["jobType"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_scheduled_at", ["scheduledAt"])
+    .index("by_priority_scheduled", ["priority", "scheduledAt"]),
+
+  memory_analytics: defineTable({
+    orgId: v.string(),
+    date: v.string(), // YYYY-MM-DD
+    
+    // Usage statistics
+    totalMemories: v.number(),
+    shortTermMemories: v.number(),
+    longTermMemories: v.number(),
+    semanticMemories: v.number(),
+    
+    // Storage metrics
+    totalTokens: v.number(),
+    totalEmbeddings: v.number(),
+    
+    // Processing metrics
+    summarizationsCompleted: v.number(),
+    embeddingsGenerated: v.number(),
+    memoriesExpired: v.number(),
+    
+    // Cost tracking
+    totalCostUSD: v.number(),
+    summarizationCostUSD: v.number(),
+    embeddingCostUSD: v.number(),
+    
+    // Performance metrics
+    avgRetrievalTimeMs: v.number(),
+    totalRetrievals: v.number(),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_date", ["orgId", "date"])
+    .index("by_date", ["date"]),
 });
