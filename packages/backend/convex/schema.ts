@@ -1764,6 +1764,10 @@ export default defineSchema({
     // AI resolution tracking
     isResolvedByAI: v.optional(v.boolean()),
     
+    // Cost tracking
+    tokensUsed: v.optional(v.number()),
+    costUSD: v.optional(v.number()),
+    
     // Metadata
     metadata: v.optional(v.object({})),
     isArchived: v.boolean(),
