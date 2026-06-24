@@ -462,7 +462,11 @@ export default defineSchema({
       v.literal("webhook_delete"),
       v.literal("user_invite"),
       v.literal("user_remove"),
-      v.literal("permission_change")
+      v.literal("permission_change"),
+      v.literal("auto_escalate"),
+      v.literal("escalate"),
+      v.literal("takeover"),
+      v.literal("release")
     ),
     resource: v.optional(v.string()), // Resource type (conversation, message, user, etc.)
     resourceId: v.optional(v.string()), // ID of the affected resource
