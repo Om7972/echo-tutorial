@@ -184,7 +184,7 @@ export const getAuditStats = query({
     // Count by day
     const byDay: Record<string, number> = {};
     logs.forEach(l => {
-      const date = new Date(l.timestamp).toISOString().split("T")[0];
+      const date = new Date(l.timestamp).toISOString().split("T")[0]!;
       byDay[date] = (byDay[date] || 0) + 1;
     });
 
