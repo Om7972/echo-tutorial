@@ -221,7 +221,7 @@ export const getExecutionTimeline = query({
     const timeline: Record<string, { date: string; total: number; completed: number; failed: number }> = {};
 
     executions.forEach((exec) => {
-      const date = new Date(exec.startedAt).toISOString().split("T")[0];
+      const date = new Date(exec.startedAt).toISOString().split("T")[0]!;
       if (!timeline[date]) {
         timeline[date] = {
           date,
