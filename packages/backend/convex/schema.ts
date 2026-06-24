@@ -437,15 +437,147 @@ export default defineSchema({
     .index("by_user_id", ["userId"])
     .index("by_user_read", ["userId", "isRead"]),
 
+  // ─── Comprehensive Audit System ────────────────────────────────────────────
   audit_logs: defineTable({
     orgId: v.string(),
     userId: v.string(),
-    action: v.string(),
-    details: v.string(),
+    userName: v.optional(v.string()),
+    userEmail: v.optional(v.string()),
+    action: v.union(
+      v.literal("login"),
+      v.literal("logout"),
+      v.literal("message_edit"),
+      v.literal("message_delete"),
+      v.literal("conversation_create"),
+      v.literal("conversation_delete"),
+      v.literal("role_change"),
+      v.literal("billing_update"),
+      v.literal("api_key_create"),
+      v.literal("api_key_revoke"),
+      v.literal("api_key_rotate"),
+      v.literal("settings_update"),
+      v.literal("export_data"),
+      v.literal("webhook_create"),
+      v.literal("webhook_update"),
+      v.literal("webhook_delete"),
+      v.literal("user_invite"),
+      v.literal("user_remove"),
+      v.literal("permission_change")
+    ),
+    resource: v.optional(v.string()), // Resource type (conversation, message, user, etc.)
+    resourceId: v.optional(v.string()), // ID of the affected resource
+    details: v.any(), // Flexible JSON details
+    changes: v.optional(v.object({
+      before: v.any(),
+      after: v.any(),
+    })),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    location: v.optional(v.object({
+      country: v.optional(v.string()),
+      city: v.optional(v.string()),
+    })),
+    success: v.boolean(),
+    errorMessage: v.optional(v.string()),
     timestamp: v.number(),
   })
     .index("by_org_id", ["orgId"])
-    .index("by_org_date", ["orgId", "timestamp"]),
+    .index("by_org_timestamp", ["orgId", "timestamp"])
+    .index("by_user_id", ["userId"])
+    .index("by_action", ["action"])
+    .index("by_resource", ["resource", "resourceId"])
+    .index("by_org_action", ["orgId", "action"]),
+
+  // ─── Webhook System ─────────────────────────────────────────────────────────
+  webhooks: defineTable({
+    orgId: v.string(),
+    name: v.string(),
+    url: v.string(),
+    secret: v.string(), // For signature verification
+    events: v.array(v.union(
+      v.literal("conversation.created"),
+      v.literal("conversation.updated"),
+      v.literal("conversation.closed"),
+      v.literal("message.received"),
+      v.literal("message.sent"),
+      v.literal("ticket.created"),
+      v.literal("ticket.closed"),
+      v.literal("handoff.started"),
+      v.literal("handoff.completed"),
+      v.literal("payment.success"),
+      v.literal("payment.failed"),
+      v.literal("subscription.created"),
+      v.literal("subscription.updated"),
+      v.literal("subscription.cancelled"),
+      v.literal("*") // All events
+    )),
+    isActive: v.boolean(),
+    headers: v.optional(v.array(v.object({
+      key: v.string(),
+      value: v.string(),
+    }))),
+    retryPolicy: v.object({
+      maxRetries: v.number(),
+      retryDelay: v.number(), // milliseconds
+      exponentialBackoff: v.boolean(),
+    }),
+    timeout: v.number(), // milliseconds
+    createdBy: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastTriggeredAt: v.optional(v.number()),
+    totalDeliveries: v.number(),
+    successfulDeliveries: v.number(),
+    failedDeliveries: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_org_active", ["orgId", "isActive"]),
+
+  webhook_deliveries: defineTable({
+    webhookId: v.id("webhooks"),
+    orgId: v.string(),
+    event: v.string(),
+    payload: v.any(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("sending"),
+      v.literal("success"),
+      v.literal("failed"),
+      v.literal("cancelled")
+    ),
+    attempts: v.number(),
+    maxAttempts: v.number(),
+    response: v.optional(v.object({
+      statusCode: v.number(),
+      headers: v.optional(v.any()),
+      body: v.optional(v.string()),
+      duration: v.number(), // milliseconds
+    })),
+    error: v.optional(v.string()),
+    nextRetryAt: v.optional(v.number()),
+    triggeredAt: v.number(),
+    deliveredAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_webhook_id", ["webhookId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_status", ["status"])
+    .index("by_org_event", ["orgId", "event"])
+    .index("by_triggered_at", ["triggeredAt"]),
+
+  webhook_logs: defineTable({
+    webhookId: v.id("webhooks"),
+    deliveryId: v.id("webhook_deliveries"),
+    orgId: v.string(),
+    level: v.union(v.literal("info"), v.literal("warning"), v.literal("error")),
+    message: v.string(),
+    details: v.optional(v.any()),
+    timestamp: v.number(),
+  })
+    .index("by_webhook_id", ["webhookId"])
+    .index("by_delivery_id", ["deliveryId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_level", ["level"]),
 
   // ─── Subscriptions & Billing ───────────────────────────────────────────────
   plans: defineTable({
