@@ -481,7 +481,7 @@ export default defineSchema({
       country: v.optional(v.string()),
       city: v.optional(v.string()),
     })),
-    success: v.boolean(),
+    success: v.optional(v.boolean()),
     errorMessage: v.optional(v.string()),
     timestamp: v.number(),
   })
