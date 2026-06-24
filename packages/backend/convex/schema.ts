@@ -2204,4 +2204,358 @@ export default defineSchema({
     .index("by_org_timestamp", ["orgId", "timestamp"])
     .index("by_resource", ["resourceType", "resourceId"])
     .index("by_action", ["action"]),
+
+  // ─── Automatic Summarization ───────────────────────────────────────────────
+  conversation_summaries: defineTable({
+    orgId: v.string(),
+    conversationId: v.id("unified_conversations"),
+    customerId: v.optional(v.id("unified_customers")),
+    
+    // Summary types
+    shortSummary: v.string(), // 1-2 sentences
+    detailedSummary: v.string(), // Comprehensive summary
+    
+    // Analysis
+    rootCause: v.optional(v.string()),
+    resolutionSteps: v.optional(v.array(v.string())),
+    sentiment: v.optional(v.string()), // "positive", "negative", "neutral"
+    sentimentScore: v.optional(v.number()), // -1 to 1
+    
+    // Action items and tags
+    actionItems: v.array(v.object({
+      description: v.string(),
+      priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+      assignedTo: v.optional(v.string()),
+      dueDate: v.optional(v.number()),
+      completed: v.boolean(),
+    })),
+    tags: v.array(v.string()),
+    categories: v.optional(v.array(v.string())),
+    
+    // Generation metadata
+    provider: v.union(v.literal("openai"), v.literal("anthropic")),
+    model: v.string(),
+    tokensUsed: v.number(),
+    costUSD: v.number(),
+    
+    // Status
+    status: v.union(
+      v.literal("generating"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("outdated")
+    ),
+    errorMessage: v.optional(v.string()),
+    
+    // Versioning
+    version: v.number(),
+    previousVersionId: v.optional(v.id("conversation_summaries")),
+    
+    // Statistics
+    messageCount: v.number(),
+    timeRangeStart: v.number(),
+    timeRangeEnd: v.number(),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    generatedBy: v.optional(v.string()), // User ID or "system"
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_org_conversation", ["orgId", "conversationId"])
+    .index("by_status", ["status"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_version", ["conversationId", "version"]),
+
+  summary_generation_jobs: defineTable({
+    orgId: v.string(),
+    conversationId: v.id("unified_conversations"),
+    
+    // Job configuration
+    summaryType: v.union(
+      v.literal("manual"),
+      v.literal("auto"),
+      v.literal("scheduled")
+    ),
+    trigger: v.optional(v.string()), // "conversation_closed", "message_count", "time_based"
+    
+    // Status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    progress: v.optional(v.number()), // 0-100
+    
+    // Result
+    summaryId: v.optional(v.id("conversation_summaries")),
+    errorMessage: v.optional(v.string()),
+    
+    // Timestamps
+    createdAt: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    
+    // Resource tracking
+    tokensUsed: v.optional(v.number()),
+    costUSD: v.optional(v.number()),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_status", ["status"])
+    .index("by_org_status", ["orgId", "status"]),
+
+  // ─── Email Support ─────────────────────────────────────────────────────────
+  email_accounts: defineTable({
+    orgId: v.string(),
+    
+    // Account details
+    email: v.string(),
+    displayName: v.string(),
+    provider: v.union(
+      v.literal("gmail"),
+      v.literal("outlook"),
+      v.literal("imap"),
+      v.literal("custom")
+    ),
+    
+    // IMAP configuration
+    imapHost: v.optional(v.string()),
+    imapPort: v.optional(v.number()),
+    imapUsername: v.optional(v.string()),
+    imapPassword: v.optional(v.string()), // Encrypted
+    imapUseSsl: v.optional(v.boolean()),
+    
+    // SMTP configuration
+    smtpHost: v.optional(v.string()),
+    smtpPort: v.optional(v.number()),
+    smtpUsername: v.optional(v.string()),
+    smtpPassword: v.optional(v.string()), // Encrypted
+    smtpUseSsl: v.optional(v.boolean()),
+    
+    // Settings
+    signature: v.optional(v.string()),
+    autoCloseAfterDays: v.optional(v.number()),
+    enableSpamFilter: v.boolean(),
+    enableTrackingPixels: v.boolean(),
+    
+    // Status
+    status: v.union(
+      v.literal("active"),
+      v.literal("disabled"),
+      v.literal("error")
+    ),
+    lastSyncAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_email", ["email"])
+    .index("by_org_status", ["orgId", "status"]),
+
+  email_messages: defineTable({
+    orgId: v.string(),
+    emailAccountId: v.id("email_accounts"),
+    conversationId: v.optional(v.id("unified_conversations")),
+    
+    // Email identifiers
+    messageId: v.string(), // RFC 2822 Message-ID
+    threadId: v.optional(v.string()),
+    inReplyTo: v.optional(v.string()),
+    references: v.optional(v.array(v.string())),
+    
+    // Sender/Recipients
+    from: v.object({
+      email: v.string(),
+      name: v.optional(v.string()),
+    }),
+    to: v.array(v.object({
+      email: v.string(),
+      name: v.optional(v.string()),
+    })),
+    cc: v.optional(v.array(v.object({
+      email: v.string(),
+      name: v.optional(v.string()),
+    }))),
+    bcc: v.optional(v.array(v.object({
+      email: v.string(),
+      name: v.optional(v.string()),
+    }))),
+    
+    // Content
+    subject: v.string(),
+    bodyText: v.optional(v.string()),
+    bodyHtml: v.optional(v.string()),
+    
+    // Attachments
+    attachments: v.optional(v.array(v.object({
+      filename: v.string(),
+      contentType: v.string(),
+      size: v.number(),
+      storageId: v.optional(v.id("_storage")),
+      url: v.optional(v.string()),
+    }))),
+    
+    // Direction and status
+    direction: v.union(v.literal("inbound"), v.literal("outbound")),
+    status: v.union(
+      v.literal("received"),
+      v.literal("sending"),
+      v.literal("sent"),
+      v.literal("failed"),
+      v.literal("bounced"),
+      v.literal("spam")
+    ),
+    
+    // Tracking
+    isRead: v.boolean(),
+    isStarred: v.boolean(),
+    isSpam: v.boolean(),
+    spamScore: v.optional(v.number()),
+    
+    // Delivery tracking
+    sentAt: v.optional(v.number()),
+    deliveredAt: v.optional(v.number()),
+    openedAt: v.optional(v.number()),
+    clickedAt: v.optional(v.number()),
+    bouncedAt: v.optional(v.number()),
+    
+    // Tracking pixel
+    trackingPixelId: v.optional(v.string()),
+    openCount: v.optional(v.number()),
+    clickCount: v.optional(v.number()),
+    
+    // Metadata
+    headers: v.optional(v.any()),
+    labels: v.optional(v.array(v.string())),
+    errorMessage: v.optional(v.string()),
+    
+    // Timestamps
+    receivedAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_email_account", ["emailAccountId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_message_id", ["messageId"])
+    .index("by_thread_id", ["threadId"])
+    .index("by_org_direction", ["orgId", "direction"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_received_at", ["receivedAt"]),
+
+  email_templates: defineTable({
+    orgId: v.string(),
+    
+    // Template details
+    name: v.string(),
+    subject: v.string(),
+    bodyHtml: v.string(),
+    bodyText: v.optional(v.string()),
+    
+    // Categorization
+    category: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    
+    // Usage
+    usageCount: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    
+    // Variables
+    variables: v.optional(v.array(v.object({
+      name: v.string(),
+      description: v.optional(v.string()),
+      defaultValue: v.optional(v.string()),
+    }))),
+    
+    // Metadata
+    createdBy: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_category", ["category"])
+    .index("by_usage", ["usageCount"]),
+
+  email_delivery_logs: defineTable({
+    orgId: v.string(),
+    emailMessageId: v.id("email_messages"),
+    
+    // Event details
+    event: v.union(
+      v.literal("queued"),
+      v.literal("sent"),
+      v.literal("delivered"),
+      v.literal("opened"),
+      v.literal("clicked"),
+      v.literal("bounced"),
+      v.literal("complained"),
+      v.literal("failed")
+    ),
+    
+    // Event data
+    recipientEmail: v.string(),
+    userAgent: v.optional(v.string()),
+    ipAddress: v.optional(v.string()),
+    location: v.optional(v.object({
+      country: v.optional(v.string()),
+      city: v.optional(v.string()),
+    })),
+    
+    // Link tracking
+    linkUrl: v.optional(v.string()),
+    
+    // Error details
+    errorCode: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    bounceType: v.optional(v.union(
+      v.literal("hard"),
+      v.literal("soft"),
+      v.literal("complaint")
+    )),
+    
+    // Metadata
+    metadata: v.optional(v.any()),
+    
+    // Timestamp
+    timestamp: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_email_message", ["emailMessageId"])
+    .index("by_event", ["event"])
+    .index("by_org_timestamp", ["orgId", "timestamp"]),
+
+  email_threads: defineTable({
+    orgId: v.string(),
+    threadId: v.string(),
+    conversationId: v.optional(v.id("unified_conversations")),
+    
+    // Thread details
+    subject: v.string(),
+    participants: v.array(v.object({
+      email: v.string(),
+      name: v.optional(v.string()),
+    })),
+    
+    // Statistics
+    messageCount: v.number(),
+    lastMessageAt: v.number(),
+    
+    // Status
+    isRead: v.boolean(),
+    isStarred: v.boolean(),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_thread_id", ["threadId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_org_updated", ["orgId", "updatedAt"]),
 });
