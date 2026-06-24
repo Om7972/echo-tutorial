@@ -14,7 +14,9 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as aiFunctions from "../aiFunctions.js";
+import type * as analytics_enterprise from "../analytics/enterprise.js";
 import type * as analytics from "../analytics.js";
+import type * as audit_logs from "../audit/logs.js";
 import type * as automation_engine from "../automation/engine.js";
 import type * as automation_logs from "../automation/logs.js";
 import type * as automation_workflows from "../automation/workflows.js";
@@ -36,6 +38,7 @@ import type * as email_messages from "../email/messages.js";
 import type * as email_templates from "../email/templates.js";
 import type * as email_threads from "../email/threads.js";
 import type * as escalation from "../escalation.js";
+import type * as evaluation_evaluator from "../evaluation/evaluator.js";
 import type * as functionCalling from "../functionCalling.js";
 import type * as inbox_conversations from "../inbox/conversations.js";
 import type * as inbox_customers from "../inbox/customers.js";
@@ -51,6 +54,13 @@ import type * as memory_jobs from "../memory/jobs.js";
 import type * as memory_manager from "../memory/manager.js";
 import type * as memory_retriever from "../memory/retriever.js";
 import type * as memory_summarizer from "../memory/summarizer.js";
+import type * as notifications_queue from "../notifications/queue.js";
+import type * as notifications_templates from "../notifications/templates.js";
+import type * as security_botDetection from "../security/botDetection.js";
+import type * as security_ipRestriction from "../security/ipRestriction.js";
+import type * as security_rateLimit from "../security/rateLimit.js";
+import type * as security_secretsManager from "../security/secretsManager.js";
+import type * as security_sessionManager from "../security/sessionManager.js";
 import type * as sentiment_analytics from "../sentiment/analytics.js";
 import type * as sentiment_analyzer from "../sentiment/analyzer.js";
 import type * as sentiment_rules from "../sentiment/rules.js";
@@ -63,7 +73,11 @@ import type * as timeline_notes from "../timeline/notes.js";
 import type * as users from "../users.js";
 import type * as voice_messages from "../voice_messages.js";
 import type * as voice_sessions from "../voice_sessions.js";
+import type * as webhooks_delivery from "../webhooks/delivery.js";
+import type * as webhooks_endpoints from "../webhooks/endpoints.js";
 import type * as widget from "../widget.js";
+import type * as workers_cron from "../workers/cron.js";
+import type * as workers_queue from "../workers/queue.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -75,7 +89,9 @@ import type * as widget from "../widget.js";
  */
 declare const fullApi: ApiFromModules<{
   aiFunctions: typeof aiFunctions;
+  "analytics/enterprise": typeof analytics_enterprise;
   analytics: typeof analytics;
+  "audit/logs": typeof audit_logs;
   "automation/engine": typeof automation_engine;
   "automation/logs": typeof automation_logs;
   "automation/workflows": typeof automation_workflows;
@@ -97,6 +113,7 @@ declare const fullApi: ApiFromModules<{
   "email/templates": typeof email_templates;
   "email/threads": typeof email_threads;
   escalation: typeof escalation;
+  "evaluation/evaluator": typeof evaluation_evaluator;
   functionCalling: typeof functionCalling;
   "inbox/conversations": typeof inbox_conversations;
   "inbox/customers": typeof inbox_customers;
@@ -112,6 +129,13 @@ declare const fullApi: ApiFromModules<{
   "memory/manager": typeof memory_manager;
   "memory/retriever": typeof memory_retriever;
   "memory/summarizer": typeof memory_summarizer;
+  "notifications/queue": typeof notifications_queue;
+  "notifications/templates": typeof notifications_templates;
+  "security/botDetection": typeof security_botDetection;
+  "security/ipRestriction": typeof security_ipRestriction;
+  "security/rateLimit": typeof security_rateLimit;
+  "security/secretsManager": typeof security_secretsManager;
+  "security/sessionManager": typeof security_sessionManager;
   "sentiment/analytics": typeof sentiment_analytics;
   "sentiment/analyzer": typeof sentiment_analyzer;
   "sentiment/rules": typeof sentiment_rules;
@@ -124,7 +148,11 @@ declare const fullApi: ApiFromModules<{
   users: typeof users;
   voice_messages: typeof voice_messages;
   voice_sessions: typeof voice_sessions;
+  "webhooks/delivery": typeof webhooks_delivery;
+  "webhooks/endpoints": typeof webhooks_endpoints;
   widget: typeof widget;
+  "workers/cron": typeof workers_cron;
+  "workers/queue": typeof workers_queue;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

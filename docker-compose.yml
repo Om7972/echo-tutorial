@@ -1,39 +1,130 @@
-version: "3.8"
+# ============================================================================
+# Echo Platform - Docker Compose Configuration
+# For local development and testing
+# ============================================================================
+
+version: '3.8'
 
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: echo-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    volumes:
-      - redis-data:/data
-
+  # ─── Next.js Application ──────────────────────────────────────────────────
   web:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_CONVEX_URL: ${NEXT_PUBLIC_CONVEX_URL}
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+        CONVEX_DEPLOYMENT: ${CONVEX_DEPLOYMENT}
     container_name: echo-web
-    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
+      - NEXT_PUBLIC_CONVEX_URL=${NEXT_PUBLIC_CONVEX_URL}
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - RESEND_API_KEY=${RESEND_API_KEY}
       - REDIS_URL=redis://redis:6379
-    volumes:
-      - ./apps/web:/app/apps/web
-      - ./packages:/app/packages
-      - /app/node_modules
-      - /app/apps/web/node_modules
-      - /app/apps/web/.next
+      - SENTRY_DSN=${SENTRY_DSN}
     depends_on:
       - redis
+    networks:
+      - echo-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
+  # ─── Redis Cache ──────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: echo-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - echo-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ─── Redis Commander (Optional - for debugging) ───────────────────────────
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: echo-redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    networks:
+      - echo-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+    profiles:
+      - debug
+
+  # ─── Nginx Reverse Proxy (Optional - for production) ──────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: echo-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - web
+    networks:
+      - echo-network
+    restart: unless-stopped
+    profiles:
+      - production
+
+# ─── Volumes ────────────────────────────────────────────────────────────────
 volumes:
   redis-data:
+    driver: local
+
+# ─── Networks ───────────────────────────────────────────────────────────────
+networks:
+  echo-network:
+    driver: bridge
+
+# ============================================================================
+# Usage Instructions
+# ============================================================================
+# 
+# Development:
+#   docker-compose up -d
+# 
+# With Redis Commander (debugging):
+#   docker-compose --profile debug up -d
+# 
+# Production with Nginx:
+#   docker-compose --profile production up -d
+# 
+# View logs:
+#   docker-compose logs -f web
+# 
+# Stop all services:
+#   docker-compose down
+# 
+# Stop and remove volumes:
+#   docker-compose down -v
+# 
+# Rebuild after code changes:
+#   docker-compose up -d --build
+# 
+# ============================================================================

@@ -579,6 +579,305 @@ export default defineSchema({
     .index("by_org_id", ["orgId"])
     .index("by_level", ["level"]),
 
+  // ─── AI Evaluation System ───────────────────────────────────────────────────
+  ai_evaluations: defineTable({
+    orgId: v.string(),
+    conversationId: v.id("conversations"),
+    messageId: v.optional(v.id("messages")),
+    responseType: v.union(v.literal("ai"), v.literal("human")),
+    
+    // Evaluation metrics
+    hallucinationScore: v.number(), // 0-1, lower is better
+    confidenceScore: v.number(), // 0-1
+    relevanceScore: v.number(), // 0-1
+    accuracyScore: v.number(), // 0-1
+    qualityScore: v.number(), // 0-1, overall
+    
+    // Content analysis
+    query: v.string(),
+    response: v.string(),
+    expectedResponse: v.optional(v.string()),
+    sourcesUsed: v.optional(v.array(v.string())),
+    
+    // Flags
+    hasHallucination: v.boolean(),
+    needsReview: v.boolean(),
+    isApproved: v.optional(v.boolean()),
+    
+    // Evaluation metadata
+    evaluatedBy: v.union(v.literal("ai"), v.literal("human")),
+    evaluatorModel: v.optional(v.string()),
+    evaluationMethod: v.string(),
+    
+    // Customer feedback
+    customerRating: v.optional(v.number()),
+    customerFeedback: v.optional(v.string()),
+    
+    // Cost tracking
+    tokensUsed: v.number(),
+    costUSD: v.number(),
+    
+    // Timestamps
+    evaluatedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_needs_review", ["needsReview"])
+    .index("by_has_hallucination", ["hasHallucination"])
+    .index("by_org_date", ["orgId", "evaluatedAt"])
+    .index("by_quality_score", ["qualityScore"]),
+
+  evaluation_reports: defineTable({
+    orgId: v.string(),
+    reportType: v.union(
+      v.literal("daily"),
+      v.literal("weekly"),
+      v.literal("monthly"),
+      v.literal("custom")
+    ),
+    dateFrom: v.string(),
+    dateTo: v.string(),
+    
+    // Aggregate metrics
+    totalEvaluations: v.number(),
+    avgHallucinationScore: v.number(),
+    avgConfidenceScore: v.number(),
+    avgRelevanceScore: v.number(),
+    avgAccuracyScore: v.number(),
+    avgQualityScore: v.number(),
+    
+    // Issue tracking
+    hallucinationsDetected: v.number(),
+    responsesNeedingReview: v.number(),
+    lowConfidenceResponses: v.number(),
+    
+    // Customer satisfaction
+    avgCustomerRating: v.optional(v.number()),
+    totalCustomerRatings: v.number(),
+    
+    // Improvement metrics
+    improvementRate: v.optional(v.number()),
+    topIssues: v.array(v.object({
+      issue: v.string(),
+      count: v.number(),
+      severity: v.string(),
+    })),
+    
+    // Recommendations
+    recommendations: v.array(v.string()),
+    
+    createdAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_org_date", ["orgId", "dateFrom"])
+    .index("by_report_type", ["reportType"]),
+
+  // ─── Security Framework ─────────────────────────────────────────────────────
+  rate_limits: defineTable({
+    identifier: v.string(), // IP, userId, apiKey
+    identifierType: v.union(
+      v.literal("ip"),
+      v.literal("user"),
+      v.literal("api_key")
+    ),
+    endpoint: v.string(),
+    requests: v.number(),
+    windowStart: v.number(),
+    windowDuration: v.number(), // in milliseconds
+    isBlocked: v.boolean(),
+    blockedUntil: v.optional(v.number()),
+  })
+    .index("by_identifier", ["identifier"])
+    .index("by_identifier_endpoint", ["identifier", "endpoint"])
+    .index("by_blocked", ["isBlocked"]),
+
+  security_events: defineTable({
+    orgId: v.optional(v.string()),
+    eventType: v.union(
+      v.literal("bot_detected"),
+      v.literal("rate_limit_exceeded"),
+      v.literal("suspicious_ip"),
+      v.literal("csrf_attempt"),
+      v.literal("xss_attempt"),
+      v.literal("sql_injection_attempt"),
+      v.literal("brute_force_attempt"),
+      v.literal("unauthorized_access"),
+      v.literal("invalid_session")
+    ),
+    severity: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical")
+    ),
+    ipAddress: v.string(),
+    userAgent: v.optional(v.string()),
+    userId: v.optional(v.string()),
+    endpoint: v.string(),
+    requestData: v.optional(v.any()),
+    isBlocked: v.boolean(),
+    blockDuration: v.optional(v.number()),
+    detectionMethod: v.string(),
+    details: v.any(),
+    timestamp: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_ip", ["ipAddress"])
+    .index("by_severity", ["severity"])
+    .index("by_event_type", ["eventType"])
+    .index("by_timestamp", ["timestamp"]),
+
+  ip_restrictions: defineTable({
+    orgId: v.string(),
+    ipAddress: v.string(),
+    type: v.union(v.literal("whitelist"), v.literal("blacklist")),
+    reason: v.optional(v.string()),
+    expiresAt: v.optional(v.number()),
+    createdBy: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_ip", ["ipAddress"])
+    .index("by_type", ["type"]),
+
+  device_tracking: defineTable({
+    userId: v.string(),
+    deviceId: v.string(),
+    deviceFingerprint: v.string(),
+    userAgent: v.string(),
+    browser: v.string(),
+    os: v.string(),
+    deviceType: v.union(v.literal("desktop"), v.literal("mobile"), v.literal("tablet")),
+    ipAddress: v.string(),
+    location: v.optional(v.object({
+      country: v.optional(v.string()),
+      city: v.optional(v.string()),
+      latitude: v.optional(v.number()),
+      longitude: v.optional(v.number()),
+    })),
+    isTrusted: v.boolean(),
+    lastSeenAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_device_id", ["deviceId"])
+    .index("by_fingerprint", ["deviceFingerprint"]),
+
+  sessions: defineTable({
+    userId: v.string(),
+    sessionToken: v.string(),
+    deviceId: v.string(),
+    ipAddress: v.string(),
+    userAgent: v.string(),
+    expiresAt: v.number(),
+    isActive: v.boolean(),
+    lastActivityAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_session_token", ["sessionToken"])
+    .index("by_device_id", ["deviceId"])
+    .index("by_expires_at", ["expiresAt"]),
+
+  encrypted_secrets: defineTable({
+    orgId: v.string(),
+    key: v.string(),
+    encryptedValue: v.string(),
+    algorithm: v.string(),
+    keyVersion: v.number(),
+    lastRotated: v.number(),
+    expiresAt: v.optional(v.number()),
+    createdBy: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_org_key", ["orgId", "key"])
+    .index("by_expires_at", ["expiresAt"]),
+
+  // ─── Worker Queues ──────────────────────────────────────────────────────────
+  job_queue: defineTable({
+    orgId: v.string(),
+    jobType: v.union(
+      v.literal("email"),
+      v.literal("embeddings"),
+      v.literal("summaries"),
+      v.literal("webhooks"),
+      v.literal("notifications"),
+      v.literal("analytics"),
+      v.literal("cleanup")
+    ),
+    priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("cancelled"),
+      v.literal("dead")
+    ),
+    payload: v.any(),
+    result: v.optional(v.any()),
+    error: v.optional(v.string()),
+    attempts: v.number(),
+    maxAttempts: v.number(),
+    nextRetryAt: v.optional(v.number()),
+    processedBy: v.optional(v.string()),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    scheduledFor: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_org_id", ["orgId"])
+    .index("by_job_type", ["jobType"])
+    .index("by_priority_status", ["priority", "status"])
+    .index("by_scheduled_for", ["scheduledFor"]),
+
+  dead_letter_queue: defineTable({
+    orgId: v.string(),
+    originalJobId: v.id("job_queue"),
+    jobType: v.string(),
+    payload: v.any(),
+    error: v.string(),
+    attempts: v.number(),
+    failedAt: v.number(),
+    canRetry: v.boolean(),
+    retried: v.boolean(),
+    retriedAt: v.optional(v.number()),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_failed_at", ["failedAt"])
+    .index("by_can_retry", ["canRetry"]),
+
+  cron_jobs: defineTable({
+    name: v.string(),
+    schedule: v.string(), // cron expression
+    jobType: v.string(),
+    payload: v.optional(v.any()),
+    isActive: v.boolean(),
+    lastRunAt: v.optional(v.number()),
+    nextRunAt: v.number(),
+    lastStatus: v.optional(v.union(v.literal("success"), v.literal("failed"))),
+    lastError: v.optional(v.string()),
+    runCount: v.number(),
+    avgDuration: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_name", ["name"])
+    .index("by_next_run", ["nextRunAt"])
+    .index("by_active", ["isActive"]),
+
+  health_checks: defineTable({
+    service: v.string(),
+    status: v.union(v.literal("healthy"), v.literal("degraded"), v.literal("down")),
+    responseTime: v.number(),
+    lastCheckedAt: v.number(),
+    errorMessage: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_service", ["service"])
+    .index("by_status", ["status"]),
+
   // ─── Subscriptions & Billing ───────────────────────────────────────────────
   plans: defineTable({
     planId: v.string(), // "free", "pro", "business", "enterprise"
