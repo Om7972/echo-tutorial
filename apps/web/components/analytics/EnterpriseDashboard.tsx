@@ -89,7 +89,7 @@ export function EnterpriseDashboard({ orgId }: EnterpriseDashboardProps) {
       "Total Cost USD",
     ];
 
-    const rows = analytics.map((day) => [
+    const rows = analytics.map((day: any) => [
       day.date,
       day.totalConversations,
       day.avgResponseTimeMs.toFixed(0),
