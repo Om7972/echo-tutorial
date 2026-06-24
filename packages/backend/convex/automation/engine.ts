@@ -13,7 +13,7 @@ import { Id } from "../_generated/dataModel";
 /**
  * Execute a workflow manually
  */
-export const executeWorkflow = action({
+export const executeWorkflow: any = action({
   args: {
     workflowId: v.id("automation_workflows"),
     conversationId: v.optional(v.id("unified_conversations")),
