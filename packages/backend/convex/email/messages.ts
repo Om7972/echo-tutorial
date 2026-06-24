@@ -159,7 +159,7 @@ export const sendEmail: any = action({
         orgId: args.orgId,
         emailMessageId,
         event: "failed",
-        recipientEmail: args.to[0].email,
+        recipientEmail: args.to[0]!.email,
         errorMessage: error.message,
       });
 
