@@ -466,7 +466,9 @@ export default defineSchema({
       v.literal("auto_escalate"),
       v.literal("escalate"),
       v.literal("takeover"),
-      v.literal("release")
+      v.literal("release"),
+      v.literal("backup_started"),
+      v.literal("reports_generated")
     ),
     resource: v.optional(v.string()), // Resource type (conversation, message, user, etc.)
     resourceId: v.optional(v.string()), // ID of the affected resource
