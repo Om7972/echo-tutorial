@@ -142,7 +142,7 @@ export const sendEmail: any = action({
         orgId: args.orgId,
         emailMessageId,
         event: "sent",
-        recipientEmail: args.to[0].email,
+        recipientEmail: args.to[0]!.email,
       });
 
       return { success: true, messageId: emailMessageId, externalId: result.id };
