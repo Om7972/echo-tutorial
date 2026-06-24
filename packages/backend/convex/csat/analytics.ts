@@ -215,8 +215,8 @@ export const getTrend = query({
       if (!grouped[key]) {
         grouped[key] = { date: key, scores: [], count: 0 };
       }
-      grouped[key].scores.push(rating.score);
-      grouped[key].count++;
+      grouped[key]!.scores.push(rating.score);
+      grouped[key]!.count++;
     });
 
     // Calculate averages and CSAT scores
