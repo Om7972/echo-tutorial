@@ -147,7 +147,7 @@ export const getActivityStats = query({
     // Count by day
     const byDay: Record<string, number> = {};
     activities.forEach(a => {
-      const date = new Date(a.timestamp).toISOString().split("T")[0];
+      const date = new Date(a.timestamp).toISOString().split("T")[0]!;
       byDay[date] = (byDay[date] || 0) + 1;
     });
 
