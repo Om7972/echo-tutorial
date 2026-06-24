@@ -3022,4 +3022,243 @@ export default defineSchema({
   })
     .index("by_org_date", ["orgId", "date"])
     .index("by_date", ["date"]),
+
+  // ─── Notification Service ──────────────────────────────────────────────────
+  notification_templates: defineTable({
+    orgId: v.optional(v.string()), // null for system templates
+    
+    // Template details
+    name: v.string(),
+    templateType: v.union(
+      v.literal("new_message"),
+      v.literal("human_handoff"),
+      v.literal("ticket_closed"),
+      v.literal("subscription_expiring"),
+      v.literal("invitation_email"),
+      v.literal("password_reset"),
+      v.literal("digest_email"),
+      v.literal("custom")
+    ),
+    
+    // Email content
+    subject: v.string(),
+    htmlBody: v.string(),
+    textBody: v.optional(v.string()),
+    
+    // Template variables
+    variables: v.array(v.object({
+      name: v.string(),
+      description: v.string(),
+      defaultValue: v.optional(v.string()),
+      required: v.boolean(),
+    })),
+    
+    // Settings
+    isActive: v.boolean(),
+    isDefault: v.boolean(), // Is this the default template for this type
+    
+    // Metadata
+    createdBy: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_template_type", ["templateType"])
+    .index("by_org_type", ["orgId", "templateType"]),
+
+  notification_queue: defineTable({
+    orgId: v.string(),
+    
+    // Queue details
+    priority: v.union(v.literal("high"), v.literal("medium"), v.literal("low")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("sent"),
+      v.literal("failed"),
+      v.literal("cancelled")
+    ),
+    
+    // Notification details
+    notificationType: v.string(),
+    templateId: v.optional(v.id("notification_templates")),
+    
+    // Recipient
+    recipientEmail: v.string(),
+    recipientName: v.optional(v.string()),
+    recipientId: v.optional(v.string()),
+    
+    // Content
+    subject: v.string(),
+    htmlBody: v.string(),
+    textBody: v.optional(v.string()),
+    
+    // Template variables used
+    variables: v.optional(v.any()),
+    
+    // Context
+    conversationId: v.optional(v.id("unified_conversations")),
+    customerId: v.optional(v.id("unified_customers")),
+    userId: v.optional(v.string()),
+    
+    // Retry logic
+    attempts: v.number(),
+    maxAttempts: v.number(),
+    nextRetryAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    
+    // External IDs
+    resendId: v.optional(v.string()),
+    
+    // Timestamps
+    scheduledFor: v.optional(v.number()),
+    processedAt: v.optional(v.number()),
+    sentAt: v.optional(v.number()),
+    failedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_status", ["status"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_priority", ["priority"])
+    .index("by_scheduled_for", ["scheduledFor"])
+    .index("by_recipient_email", ["recipientEmail"]),
+
+  notification_logs: defineTable({
+    orgId: v.string(),
+    queueId: v.id("notification_queue"),
+    
+    // Event details
+    event: v.union(
+      v.literal("queued"),
+      v.literal("processing"),
+      v.literal("sent"),
+      v.literal("delivered"),
+      v.literal("opened"),
+      v.literal("clicked"),
+      v.literal("bounced"),
+      v.literal("failed")
+    ),
+    
+    // Event data
+    details: v.optional(v.any()),
+    errorMessage: v.optional(v.string()),
+    errorCode: v.optional(v.string()),
+    
+    // External tracking
+    resendEventId: v.optional(v.string()),
+    
+    // Timestamp
+    timestamp: v.number(),
+  })
+    .index("by_queue_id", ["queueId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_event", ["event"])
+    .index("by_org_timestamp", ["orgId", "timestamp"]),
+
+  // ─── Enterprise Analytics ──────────────────────────────────────────────────
+  enterprise_analytics: defineTable({
+    orgId: v.string(),
+    date: v.string(), // YYYY-MM-DD
+    
+    // Response metrics
+    avgResponseTimeMs: v.number(),
+    avgFirstResponseTimeMs: v.number(),
+    avgResolutionTimeMs: v.number(),
+    
+    // Volume metrics
+    totalConversations: v.number(),
+    newConversations: v.number(),
+    resolvedConversations: v.number(),
+    openConversations: v.number(),
+    
+    // AI metrics
+    aiHandledConversations: v.number(),
+    aiAccuracyRate: v.number(), // % of successful AI responses
+    humanHandoffRate: v.number(), // % requiring human intervention
+    humanHandoffCount: v.number(),
+    
+    // Agent metrics
+    activeAgents: v.number(),
+    avgConversationsPerAgent: v.number(),
+    
+    // CSAT metrics
+    avgCsatScore: v.number(),
+    totalCsatRatings: v.number(),
+    
+    // Sentiment metrics
+    avgSentimentScore: v.number(),
+    positiveCount: v.number(),
+    negativeCount: v.number(),
+    neutralCount: v.number(),
+    
+    // Cost metrics
+    totalTokensUsed: v.number(),
+    totalCostUSD: v.number(),
+    avgCostPerConversation: v.number(),
+    
+    // Revenue metrics (optional)
+    totalRevenue: v.optional(v.number()),
+    avgRevenuePerConversation: v.optional(v.number()),
+    
+    // Channel breakdown
+    channelBreakdown: v.object({
+      email: v.number(),
+      chat: v.number(),
+      phone: v.number(),
+      social: v.number(),
+      other: v.number(),
+    }),
+    
+    // Priority breakdown
+    priorityBreakdown: v.object({
+      low: v.number(),
+      medium: v.number(),
+      high: v.number(),
+      urgent: v.number(),
+    }),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_date", ["orgId", "date"])
+    .index("by_date", ["date"])
+    .index("by_org_id", ["orgId"]),
+
+  analytics_metrics: defineTable({
+    orgId: v.string(),
+    
+    // Metric type
+    metricType: v.union(
+      v.literal("response_time"),
+      v.literal("resolution_time"),
+      v.literal("ai_accuracy"),
+      v.literal("handoff_rate"),
+      v.literal("csat_score"),
+      v.literal("sentiment_score"),
+      v.literal("conversation_volume"),
+      v.literal("token_cost"),
+      v.literal("revenue")
+    ),
+    
+    // Value
+    value: v.number(),
+    
+    // Context
+    conversationId: v.optional(v.id("unified_conversations")),
+    customerId: v.optional(v.id("unified_customers")),
+    agentId: v.optional(v.string()),
+    
+    // Metadata
+    metadata: v.optional(v.any()),
+    
+    // Timestamp
+    timestamp: v.number(),
+    date: v.string(), // YYYY-MM-DD
+  })
+    .index("by_org_date", ["orgId", "date"])
+    .index("by_org_type", ["orgId", "metricType"])
+    .index("by_org_type_date", ["orgId", "metricType", "date"])
+    .index("by_timestamp", ["timestamp"]),
 });
