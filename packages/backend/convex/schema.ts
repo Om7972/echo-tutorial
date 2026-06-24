@@ -1761,6 +1761,9 @@ export default defineSchema({
     resolutionTimeMs: v.optional(v.number()),
     slaDeadline: v.optional(v.number()),
     
+    // AI resolution tracking
+    isResolvedByAI: v.optional(v.boolean()),
+    
     // Metadata
     metadata: v.optional(v.object({})),
     isArchived: v.boolean(),
