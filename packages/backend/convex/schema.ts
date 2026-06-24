@@ -2558,4 +2558,468 @@ export default defineSchema({
     .index("by_thread_id", ["threadId"])
     .index("by_conversation_id", ["conversationId"])
     .index("by_org_updated", ["orgId", "updatedAt"]),
+
+  // ─── No-Code Automation Engine ─────────────────────────────────────────────
+  automation_workflows: defineTable({
+    orgId: v.string(),
+    
+    // Workflow details
+    name: v.string(),
+    description: v.optional(v.string()),
+    
+    // Status
+    isActive: v.boolean(),
+    
+    // Visual flow data
+    flowData: v.optional(v.any()), // React Flow JSON
+    
+    // Execution settings
+    priority: v.number(), // Higher = executed first
+    retryOnFailure: v.boolean(),
+    maxRetries: v.number(),
+    
+    // Statistics
+    totalExecutions: v.number(),
+    successfulExecutions: v.number(),
+    failedExecutions: v.number(),
+    lastExecutedAt: v.optional(v.number()),
+    
+    // Metadata
+    createdBy: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_org_active", ["orgId", "isActive"])
+    .index("by_priority", ["priority"]),
+
+  automation_triggers: defineTable({
+    orgId: v.string(),
+    workflowId: v.id("automation_workflows"),
+    
+    // Trigger configuration
+    triggerType: v.union(
+      v.literal("message_received"),
+      v.literal("sentiment_negative"),
+      v.literal("new_customer"),
+      v.literal("vip_customer"),
+      v.literal("conversation_idle"),
+      v.literal("conversation_resolved"),
+      v.literal("keyword_detected"),
+      v.literal("time_based"),
+      v.literal("manual")
+    ),
+    
+    // Trigger configuration
+    config: v.object({
+      // Message received
+      channelTypes: v.optional(v.array(v.string())),
+      messageTypes: v.optional(v.array(v.string())),
+      
+      // Sentiment
+      sentimentTypes: v.optional(v.array(v.string())),
+      minSentimentScore: v.optional(v.number()),
+      
+      // Customer
+      customerTiers: v.optional(v.array(v.string())),
+      customerTags: v.optional(v.array(v.string())),
+      
+      // Keywords
+      keywords: v.optional(v.array(v.string())),
+      matchType: v.optional(v.union(v.literal("any"), v.literal("all"), v.literal("exact"))),
+      
+      // Time-based
+      schedule: v.optional(v.string()), // Cron expression
+      
+      // Idle timeout
+      idleMinutes: v.optional(v.number()),
+    }),
+    
+    // Metadata
+    createdAt: v.number(),
+  })
+    .index("by_workflow_id", ["workflowId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_trigger_type", ["triggerType"]),
+
+  automation_conditions: defineTable({
+    orgId: v.string(),
+    workflowId: v.id("automation_workflows"),
+    
+    // Condition details
+    conditionType: v.union(
+      v.literal("contains_keywords"),
+      v.literal("priority"),
+      v.literal("tags"),
+      v.literal("customer_tier"),
+      v.literal("conversation_age"),
+      v.literal("message_count"),
+      v.literal("sentiment_score"),
+      v.literal("assigned_to"),
+      v.literal("channel_type"),
+      v.literal("custom_field")
+    ),
+    
+    // Operator
+    operator: v.union(
+      v.literal("equals"),
+      v.literal("not_equals"),
+      v.literal("contains"),
+      v.literal("not_contains"),
+      v.literal("greater_than"),
+      v.literal("less_than"),
+      v.literal("in"),
+      v.literal("not_in")
+    ),
+    
+    // Value (flexible type)
+    value: v.any(),
+    
+    // Logic
+    logicOperator: v.optional(v.union(v.literal("AND"), v.literal("OR"))),
+    
+    // Metadata
+    createdAt: v.number(),
+  })
+    .index("by_workflow_id", ["workflowId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_condition_type", ["conditionType"]),
+
+  automation_actions: defineTable({
+    orgId: v.string(),
+    workflowId: v.id("automation_workflows"),
+    
+    // Execution order
+    order: v.number(),
+    
+    // Action type
+    actionType: v.union(
+      v.literal("assign_agent"),
+      v.literal("send_email"),
+      v.literal("handoff_to_human"),
+      v.literal("close_conversation"),
+      v.literal("notify_slack"),
+      v.literal("add_tag"),
+      v.literal("remove_tag"),
+      v.literal("set_priority"),
+      v.literal("create_note"),
+      v.literal("send_message"),
+      v.literal("update_field"),
+      v.literal("wait"),
+      v.literal("webhook")
+    ),
+    
+    // Action configuration
+    config: v.object({
+      // Assign agent
+      agentId: v.optional(v.string()),
+      assignmentMethod: v.optional(v.string()), // "specific", "round_robin", "least_active"
+      
+      // Send email
+      emailTemplateId: v.optional(v.id("email_templates")),
+      emailTo: v.optional(v.string()),
+      emailSubject: v.optional(v.string()),
+      emailBody: v.optional(v.string()),
+      
+      // Slack
+      slackChannelId: v.optional(v.string()),
+      slackMessage: v.optional(v.string()),
+      
+      // Tags
+      tags: v.optional(v.array(v.string())),
+      
+      // Priority
+      priority: v.optional(v.string()),
+      
+      // Note
+      noteContent: v.optional(v.string()),
+      
+      // Message
+      messageContent: v.optional(v.string()),
+      
+      // Field update
+      fieldName: v.optional(v.string()),
+      fieldValue: v.optional(v.any()),
+      
+      // Wait
+      waitSeconds: v.optional(v.number()),
+      
+      // Webhook
+      webhookUrl: v.optional(v.string()),
+      webhookMethod: v.optional(v.string()),
+      webhookHeaders: v.optional(v.any()),
+      webhookBody: v.optional(v.any()),
+    }),
+    
+    // Retry settings
+    retryOnFailure: v.boolean(),
+    maxRetries: v.number(),
+    
+    // Metadata
+    createdAt: v.number(),
+  })
+    .index("by_workflow_id", ["workflowId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_workflow_order", ["workflowId", "order"]),
+
+  automation_executions: defineTable({
+    orgId: v.string(),
+    workflowId: v.id("automation_workflows"),
+    
+    // Trigger context
+    triggeredBy: v.union(v.literal("event"), v.literal("manual"), v.literal("scheduled")),
+    triggerData: v.optional(v.any()),
+    
+    // Target
+    conversationId: v.optional(v.id("unified_conversations")),
+    messageId: v.optional(v.id("unified_messages")),
+    customerId: v.optional(v.id("unified_customers")),
+    
+    // Execution status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("cancelled")
+    ),
+    
+    // Progress
+    currentStep: v.number(),
+    totalSteps: v.number(),
+    
+    // Results
+    actionsExecuted: v.number(),
+    actionsFailed: v.number(),
+    
+    // Error tracking
+    errorMessage: v.optional(v.string()),
+    errorStack: v.optional(v.string()),
+    
+    // Retry tracking
+    retryCount: v.number(),
+    
+    // Timestamps
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_workflow_id", ["workflowId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_status", ["status"])
+    .index("by_org_status", ["orgId", "status"])
+    .index("by_started_at", ["startedAt"]),
+
+  automation_logs: defineTable({
+    orgId: v.string(),
+    workflowId: v.id("automation_workflows"),
+    executionId: v.id("automation_executions"),
+    
+    // Log level
+    level: v.union(
+      v.literal("info"),
+      v.literal("warning"),
+      v.literal("error"),
+      v.literal("debug")
+    ),
+    
+    // Log details
+    step: v.string(), // Trigger, condition, action name
+    message: v.string(),
+    details: v.optional(v.any()),
+    
+    // Action-specific
+    actionType: v.optional(v.string()),
+    actionResult: v.optional(v.any()),
+    
+    // Error details
+    errorCode: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    
+    // Timestamp
+    timestamp: v.number(),
+  })
+    .index("by_execution_id", ["executionId"])
+    .index("by_workflow_id", ["workflowId"])
+    .index("by_org_id", ["orgId"])
+    .index("by_level", ["level"])
+    .index("by_org_timestamp", ["orgId", "timestamp"]),
+
+  // ─── CSAT System ───────────────────────────────────────────────────────────
+  csat_ratings: defineTable({
+    orgId: v.string(),
+    conversationId: v.id("unified_conversations"),
+    customerId: v.optional(v.id("unified_customers")),
+    
+    // Rating details
+    ratingType: v.union(
+      v.literal("stars"),       // 1-5 stars
+      v.literal("emoji"),       // 😞 😐 🙂 😊 😍
+      v.literal("thumbs"),      // 👍 👎
+      v.literal("nps")          // 0-10 Net Promoter Score
+    ),
+    
+    // Score (normalized)
+    score: v.number(), // 1-5 for consistency
+    rawScore: v.optional(v.number()), // Original score (e.g., 0-10 for NPS)
+    
+    // Feedback
+    feedbackComment: v.optional(v.string()),
+    feedbackCategory: v.optional(v.union(
+      v.literal("response_time"),
+      v.literal("issue_resolution"),
+      v.literal("agent_knowledge"),
+      v.literal("agent_friendliness"),
+      v.literal("overall_experience"),
+      v.literal("other")
+    )),
+    
+    // Context
+    agentId: v.optional(v.string()),
+    agentName: v.optional(v.string()),
+    
+    // Survey details
+    surveyId: v.optional(v.id("csat_surveys")),
+    surveyToken: v.optional(v.string()), // Unique token for survey link
+    
+    // Metadata
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    
+    // Tags for analysis
+    tags: v.optional(v.array(v.string())),
+    
+    // Timestamps
+    ratedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_customer_id", ["customerId"])
+    .index("by_agent_id", ["agentId"])
+    .index("by_survey_id", ["surveyId"])
+    .index("by_survey_token", ["surveyToken"])
+    .index("by_org_rated", ["orgId", "ratedAt"])
+    .index("by_org_score", ["orgId", "score"]),
+
+  csat_surveys: defineTable({
+    orgId: v.string(),
+    
+    // Survey configuration
+    name: v.string(),
+    description: v.optional(v.string()),
+    
+    // Survey type
+    surveyType: v.union(
+      v.literal("post_conversation"),
+      v.literal("periodic"),
+      v.literal("triggered"),
+      v.literal("manual")
+    ),
+    
+    // Questions
+    ratingType: v.union(
+      v.literal("stars"),
+      v.literal("emoji"),
+      v.literal("thumbs"),
+      v.literal("nps")
+    ),
+    primaryQuestion: v.string(), // e.g., "How satisfied are you with our support?"
+    followupQuestion: v.optional(v.string()), // e.g., "What could we improve?"
+    
+    // Trigger conditions
+    triggerConditions: v.optional(v.object({
+      afterConversationClosed: v.optional(v.boolean()),
+      afterMinutes: v.optional(v.number()),
+      forChannels: v.optional(v.array(v.string())),
+      forPriorities: v.optional(v.array(v.string())),
+    })),
+    
+    // Settings
+    isActive: v.boolean(),
+    allowComments: v.boolean(),
+    requireComments: v.boolean(),
+    showAgentName: v.boolean(),
+    
+    // Email settings
+    emailSubject: v.optional(v.string()),
+    emailBody: v.optional(v.string()),
+    emailFromName: v.optional(v.string()),
+    
+    // Link settings
+    surveyUrl: v.optional(v.string()),
+    thankYouMessage: v.string(),
+    
+    // Statistics
+    totalSent: v.number(),
+    totalResponses: v.number(),
+    responseRate: v.number(),
+    avgScore: v.optional(v.number()),
+    
+    // Metadata
+    createdBy: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_id", ["orgId"])
+    .index("by_org_active", ["orgId", "isActive"])
+    .index("by_survey_type", ["surveyType"]),
+
+  csat_analytics: defineTable({
+    orgId: v.string(),
+    date: v.string(), // YYYY-MM-DD
+    
+    // Overall metrics
+    totalRatings: v.number(),
+    avgScore: v.number(), // 1-5
+    
+    // Score distribution
+    score1Count: v.number(),
+    score2Count: v.number(),
+    score3Count: v.number(),
+    score4Count: v.number(),
+    score5Count: v.number(),
+    
+    // CSAT calculation
+    csatScore: v.number(), // Percentage of 4-5 ratings
+    
+    // NPS calculation (if using NPS)
+    npsScore: v.optional(v.number()), // -100 to 100
+    promoterCount: v.optional(v.number()), // 9-10
+    passiveCount: v.optional(v.number()), // 7-8
+    detractorCount: v.optional(v.number()), // 0-6
+    
+    // Feedback analysis
+    totalComments: v.number(),
+    negativeComments: v.number(), // Ratings 1-2
+    positiveComments: v.number(), // Ratings 4-5
+    
+    // Category breakdown
+    categoryBreakdown: v.optional(v.object({
+      response_time: v.optional(v.number()),
+      issue_resolution: v.optional(v.number()),
+      agent_knowledge: v.optional(v.number()),
+      agent_friendliness: v.optional(v.number()),
+      overall_experience: v.optional(v.number()),
+    })),
+    
+    // Agent performance
+    topAgents: v.optional(v.array(v.object({
+      agentId: v.string(),
+      agentName: v.string(),
+      avgScore: v.number(),
+      totalRatings: v.number(),
+    }))),
+    
+    // Trends
+    trendDirection: v.optional(v.union(v.literal("up"), v.literal("down"), v.literal("stable"))),
+    trendPercentage: v.optional(v.number()),
+    
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_date", ["orgId", "date"])
+    .index("by_date", ["date"]),
 });
