@@ -11,7 +11,7 @@ import { Id } from "../_generated/dataModel";
 /**
  * Send email
  */
-export const sendEmail = action({
+export const sendEmail: any = action({
   args: {
     orgId: v.string(),
     emailAccountId: v.id("email_accounts"),
