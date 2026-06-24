@@ -30,6 +30,9 @@ export async function POST(req: NextRequest) {
         model: "text-embedding-3-small",
         input: query,
       });
+      if (!response.data[0]) {
+        throw new Error("Failed to generate embedding");
+      }
       queryEmbedding = response.data[0].embedding;
     } else {
       // Mock embedding for testing
