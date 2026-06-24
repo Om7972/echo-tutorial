@@ -452,7 +452,7 @@ export const recordMetric = internalMutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const date = new Date(now).toISOString().split("T")[0];
+    const date = new Date(now).toISOString().split("T")[0]!;
 
     return await ctx.db.insert("analytics_metrics", {
       orgId: args.orgId,
