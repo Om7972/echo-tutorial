@@ -37,6 +37,7 @@ export const executeWorkflow: any = action({
     }
 
     // Create execution record
+    // @ts-ignore
     const executionId = await ctx.runMutation(internal.automation.engine.createExecution as any, {
       workflowId: args.workflowId,
       orgId: workflow.orgId,
