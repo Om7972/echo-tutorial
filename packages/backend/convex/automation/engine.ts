@@ -13,7 +13,7 @@ import { Id } from "../_generated/dataModel";
 /**
  * Execute a workflow manually
  */
-export const executeWorkflow: any = action({
+export const executeWorkflow = action({
   args: {
     workflowId: v.id("automation_workflows"),
     conversationId: v.optional(v.id("unified_conversations")),
@@ -23,7 +23,7 @@ export const executeWorkflow: any = action({
   },
   handler: async (ctx, args) => {
     // Get workflow
-    const workflow = await ctx.runQuery(internal.automation.engine.getWorkflowForExecution, {
+    const workflow = await ctx.runQuery(internal.automation.engine.getWorkflowForExecution as any, {
       workflowId: args.workflowId,
     });
 
@@ -36,7 +36,7 @@ export const executeWorkflow: any = action({
     }
 
     // Create execution record
-    const executionId = await ctx.runMutation(internal.automation.engine.createExecution, {
+    const executionId = await ctx.runMutation(internal.automation.engine.createExecution as any, {
       workflowId: args.workflowId,
       orgId: workflow.orgId,
       triggeredBy: "manual",
@@ -49,7 +49,7 @@ export const executeWorkflow: any = action({
 
     // Execute workflow
     try {
-      await ctx.runMutation(internal.automation.engine.updateExecutionStatus, {
+      await ctx.runMutation(internal.automation.engine.updateExecutionStatus as any, {
         executionId,
         status: "running",
       });
@@ -66,12 +66,12 @@ export const executeWorkflow: any = action({
       );
 
       if (!conditionsPassed) {
-        await ctx.runMutation(internal.automation.engine.updateExecutionStatus, {
+        await ctx.runMutation(internal.automation.engine.updateExecutionStatus as any, {
           executionId,
           status: "completed",
         });
 
-        await ctx.runMutation(internal.automation.engine.createLog, {
+        await ctx.runMutation(internal.automation.engine.createLog as any, {
           workflowId: args.workflowId,
           executionId,
           orgId: workflow.orgId,
@@ -88,7 +88,7 @@ export const executeWorkflow: any = action({
       for (const action of workflow.actions) {
         currentStep++;
 
-        await ctx.runMutation(internal.automation.engine.createLog, {
+        await ctx.runMutation(internal.automation.engine.createLog as any, {
           workflowId: args.workflowId,
           executionId,
           orgId: workflow.orgId,
@@ -105,11 +105,11 @@ export const executeWorkflow: any = action({
             customerId: args.customerId,
           });
 
-          await ctx.runMutation(internal.automation.engine.incrementActionsExecuted, {
+          await ctx.runMutation(internal.automation.engine.incrementActionsExecuted as any, {
             executionId,
           });
 
-          await ctx.runMutation(internal.automation.engine.createLog, {
+          await ctx.runMutation(internal.automation.engine.createLog as any, {
             workflowId: args.workflowId,
             executionId,
             orgId: workflow.orgId,
@@ -119,11 +119,11 @@ export const executeWorkflow: any = action({
             actionResult: result,
           });
         } catch (error: any) {
-          await ctx.runMutation(internal.automation.engine.incrementActionsFailed, {
+          await ctx.runMutation(internal.automation.engine.incrementActionsFailed as any, {
             executionId,
           });
 
-          await ctx.runMutation(internal.automation.engine.createLog, {
+          await ctx.runMutation(internal.automation.engine.createLog as any, {
             workflowId: args.workflowId,
             executionId,
             orgId: workflow.orgId,
@@ -138,31 +138,31 @@ export const executeWorkflow: any = action({
           }
         }
 
-        await ctx.runMutation(internal.automation.engine.updateExecutionStep, {
+        await ctx.runMutation(internal.automation.engine.updateExecutionStep as any, {
           executionId,
           currentStep,
         });
       }
 
       // Mark as completed
-      await ctx.runMutation(internal.automation.engine.updateExecutionStatus, {
+      await ctx.runMutation(internal.automation.engine.updateExecutionStatus as any, {
         executionId,
         status: "completed",
       });
 
-      await ctx.runMutation(internal.automation.engine.incrementWorkflowSuccess, {
+      await ctx.runMutation(internal.automation.engine.incrementWorkflowSuccess as any, {
         workflowId: args.workflowId,
       });
 
       return { executionId, status: "completed" };
     } catch (error: any) {
-      await ctx.runMutation(internal.automation.engine.updateExecutionStatus, {
+      await ctx.runMutation(internal.automation.engine.updateExecutionStatus as any, {
         executionId,
         status: "failed",
         errorMessage: error.message,
       });
 
-      await ctx.runMutation(internal.automation.engine.incrementWorkflowFailure, {
+      await ctx.runMutation(internal.automation.engine.incrementWorkflowFailure as any, {
         workflowId: args.workflowId,
       });
 
@@ -173,7 +173,7 @@ export const executeWorkflow: any = action({
 
 // ─── Internal Queries ───────────────────────────────────────────────────────
 
-export const getWorkflowForExecution: any = internalQuery({
+export const getWorkflowForExecution = internalQuery({
   args: {
     workflowId: v.id("automation_workflows"),
   },
@@ -202,7 +202,7 @@ export const getWorkflowForExecution: any = internalQuery({
 
 // ─── Internal Mutations ─────────────────────────────────────────────────────
 
-export const createExecution: any = internalMutation({
+export const createExecution = internalMutation({
   args: {
     workflowId: v.id("automation_workflows"),
     orgId: v.string(),
@@ -236,7 +236,7 @@ export const createExecution: any = internalMutation({
   },
 });
 
-export const updateExecutionStatus: any = internalMutation({
+export const updateExecutionStatus = internalMutation({
   args: {
     executionId: v.id("automation_executions"),
     status: v.string(),
@@ -259,7 +259,7 @@ export const updateExecutionStatus: any = internalMutation({
   },
 });
 
-export const updateExecutionStep: any = internalMutation({
+export const updateExecutionStep = internalMutation({
   args: {
     executionId: v.id("automation_executions"),
     currentStep: v.number(),
@@ -271,7 +271,7 @@ export const updateExecutionStep: any = internalMutation({
   },
 });
 
-export const incrementActionsExecuted: any = internalMutation({
+export const incrementActionsExecuted = internalMutation({
   args: {
     executionId: v.id("automation_executions"),
   },
@@ -285,7 +285,7 @@ export const incrementActionsExecuted: any = internalMutation({
   },
 });
 
-export const incrementActionsFailed: any = internalMutation({
+export const incrementActionsFailed = internalMutation({
   args: {
     executionId: v.id("automation_executions"),
   },
@@ -299,7 +299,7 @@ export const incrementActionsFailed: any = internalMutation({
   },
 });
 
-export const incrementWorkflowSuccess: any = internalMutation({
+export const incrementWorkflowSuccess = internalMutation({
   args: {
     workflowId: v.id("automation_workflows"),
   },
@@ -315,7 +315,7 @@ export const incrementWorkflowSuccess: any = internalMutation({
   },
 });
 
-export const incrementWorkflowFailure: any = internalMutation({
+export const incrementWorkflowFailure = internalMutation({
   args: {
     workflowId: v.id("automation_workflows"),
   },
@@ -331,7 +331,7 @@ export const incrementWorkflowFailure: any = internalMutation({
   },
 });
 
-export const createLog: any = internalMutation({
+export const createLog = internalMutation({
   args: {
     workflowId: v.id("automation_workflows"),
     executionId: v.id("automation_executions"),
