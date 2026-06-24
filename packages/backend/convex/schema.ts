@@ -1774,6 +1774,9 @@ export default defineSchema({
     tokensUsed: v.optional(v.number()),
     costUSD: v.optional(v.number()),
     
+    // CSAT tracking
+    csatScore: v.optional(v.number()),
+    
     // Metadata
     metadata: v.optional(v.object({})),
     isArchived: v.boolean(),
