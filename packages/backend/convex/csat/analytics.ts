@@ -203,11 +203,11 @@ export const getTrend = query({
       let key: string;
 
       if (groupBy === "day") {
-        key = date.toISOString().split("T")[0];
+        key = date.toISOString().split("T")[0]!;
       } else if (groupBy === "week") {
         const weekStart = new Date(date);
         weekStart.setDate(date.getDate() - date.getDay());
-        key = weekStart.toISOString().split("T")[0];
+        key = weekStart.toISOString().split("T")[0]!;
       } else {
         key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       }
@@ -321,7 +321,7 @@ export const generateDailyAnalytics = internalMutation({
     const scoreDistribution = ratings.reduce(
       (acc, r) => {
         const score = Math.round(r.score);
-        acc[`score${score}Count`] = (acc[`score${score}Count`] || 0) + 1;
+        (acc as any)[`score${score}Count`] = ((acc as any)[`score${score}Count`] || 0) + 1;
         return acc;
       },
       {
@@ -339,7 +339,7 @@ export const generateDailyAnalytics = internalMutation({
 
     // NPS calculation
     const npsRatings = ratings.filter((r) => r.ratingType === "nps" && r.rawScore !== undefined);
-    let npsScore = null;
+    let npsScore: number | undefined = undefined;
     let promoterCount = 0;
     let passiveCount = 0;
     let detractorCount = 0;
@@ -400,7 +400,7 @@ export const generateDailyAnalytics = internalMutation({
       .slice(0, 10);
 
     // Calculate trend
-    const previousDate = new Date(startOfDay - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const previousDate = new Date(startOfDay - 24 * 60 * 60 * 1000).toISOString().split("T")[0]!;
     const previousAnalytics = await ctx.db
       .query("csat_analytics")
       .withIndex("by_org_date", (q) => q.eq("orgId", args.orgId).eq("date", previousDate))
