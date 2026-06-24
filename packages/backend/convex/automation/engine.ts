@@ -22,6 +22,7 @@ export const executeWorkflow: any = action({
     triggerData: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
+    // @ts-ignore - Type instantiation is excessively deep
     // Get workflow
     const workflow = await ctx.runQuery(internal.automation.engine.getWorkflowForExecution as any, {
       workflowId: args.workflowId,
