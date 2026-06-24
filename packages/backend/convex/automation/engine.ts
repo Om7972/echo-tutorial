@@ -173,7 +173,7 @@ export const executeWorkflow: any = action({
 
 // ─── Internal Queries ───────────────────────────────────────────────────────
 
-export const getWorkflowForExecution = internalQuery({
+export const getWorkflowForExecution: any = internalQuery({
   args: {
     workflowId: v.id("automation_workflows"),
   },
@@ -202,7 +202,7 @@ export const getWorkflowForExecution = internalQuery({
 
 // ─── Internal Mutations ─────────────────────────────────────────────────────
 
-export const createExecution = internalMutation({
+export const createExecution: any = internalMutation({
   args: {
     workflowId: v.id("automation_workflows"),
     orgId: v.string(),
@@ -236,7 +236,7 @@ export const createExecution = internalMutation({
   },
 });
 
-export const updateExecutionStatus = internalMutation({
+export const updateExecutionStatus: any = internalMutation({
   args: {
     executionId: v.id("automation_executions"),
     status: v.string(),
@@ -259,7 +259,7 @@ export const updateExecutionStatus = internalMutation({
   },
 });
 
-export const updateExecutionStep = internalMutation({
+export const updateExecutionStep: any = internalMutation({
   args: {
     executionId: v.id("automation_executions"),
     currentStep: v.number(),
@@ -271,7 +271,7 @@ export const updateExecutionStep = internalMutation({
   },
 });
 
-export const incrementActionsExecuted = internalMutation({
+export const incrementActionsExecuted: any = internalMutation({
   args: {
     executionId: v.id("automation_executions"),
   },
@@ -285,7 +285,7 @@ export const incrementActionsExecuted = internalMutation({
   },
 });
 
-export const incrementActionsFailed = internalMutation({
+export const incrementActionsFailed: any = internalMutation({
   args: {
     executionId: v.id("automation_executions"),
   },
@@ -299,7 +299,7 @@ export const incrementActionsFailed = internalMutation({
   },
 });
 
-export const incrementWorkflowSuccess = internalMutation({
+export const incrementWorkflowSuccess: any = internalMutation({
   args: {
     workflowId: v.id("automation_workflows"),
   },
@@ -315,7 +315,7 @@ export const incrementWorkflowSuccess = internalMutation({
   },
 });
 
-export const incrementWorkflowFailure = internalMutation({
+export const incrementWorkflowFailure: any = internalMutation({
   args: {
     workflowId: v.id("automation_workflows"),
   },
@@ -331,7 +331,7 @@ export const incrementWorkflowFailure = internalMutation({
   },
 });
 
-export const createLog = internalMutation({
+export const createLog: any = internalMutation({
   args: {
     workflowId: v.id("automation_workflows"),
     executionId: v.id("automation_executions"),
