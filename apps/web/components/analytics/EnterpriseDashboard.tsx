@@ -64,11 +64,11 @@ export function EnterpriseDashboard({ orgId }: EnterpriseDashboardProps) {
           period1From: dateFrom,
           period1To: dateTo,
           period2From: new Date(
-            new Date(dateFrom).getTime() - (dateRange === "7d" ? 7 : dateRange === "30d" ? 30 : 90) * 24 * 60 * 60 * 1000
+            new Date(dateFrom!).getTime() - (dateRange === "7d" ? 7 : dateRange === "30d" ? 30 : 90) * 24 * 60 * 60 * 1000
           )
             .toISOString()
             .split("T")[0],
-          period2To: new Date(new Date(dateFrom).getTime() - 24 * 60 * 60 * 1000)
+          period2To: new Date(new Date(dateFrom!).getTime() - 24 * 60 * 60 * 1000)
             .toISOString()
             .split("T")[0],
         }
