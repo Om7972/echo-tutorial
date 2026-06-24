@@ -142,7 +142,7 @@ export const getAnalytics = query({
       )
       .collect();
 
-    let trend = { direction: "stable" as const, percentage: 0 };
+    let trend: { direction: "up" | "down" | "stable"; percentage: number } = { direction: "stable", percentage: 0 };
     if (previousRatings.length > 0) {
       const previousAvg =
         previousRatings.reduce((sum, r) => sum + r.score, 0) / previousRatings.length;
