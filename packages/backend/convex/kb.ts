@@ -224,7 +224,7 @@ export const listDocuments = query({
     
     if (args.status) {
       query = ctx.db.query("documents").withIndex("by_org_status", (q) => 
-        q.eq("orgId", args.orgId).eq("status", args.status));
+        q.eq("orgId", args.orgId).eq("status", args.status!));
     }
 
     return await query.order("desc").collect();
