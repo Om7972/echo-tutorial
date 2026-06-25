@@ -46,7 +46,6 @@ export const updateSearchIndex = internalMutation({
       // Update existing index
       await ctx.db.patch(existingIndex._id, {
         searchableText: searchableContent,
-        messageCount: messages.length,
         lastMessageAt: conversation.lastMessageAt,
         updatedAt: Date.now(),
       });
@@ -55,11 +54,13 @@ export const updateSearchIndex = internalMutation({
       await ctx.db.insert("conversation_search_index", {
         orgId: conversation.orgId,
         conversationId: args.conversationId,
-        customerId: conversation.customerId,
+        customerName: conversation.customerName,
+        customerEmail: conversation.customerEmail,
+        tags: conversation.tags,
         searchableText: searchableContent,
-        messageCount: messages.length,
         lastMessageAt: conversation.lastMessageAt,
-        createdAt: Date.now(),
+        channelType: conversation.channelType,
+        indexedAt: Date.now(),
         updatedAt: Date.now(),
       });
     }
@@ -86,12 +87,12 @@ export const searchConversations = query({
     // Get all search indexes for the org
     const indexes = await ctx.db
       .query("conversation_search_index")
-      .withIndex("by_org_updated", q => q.eq("orgId", args.orgId))
-      .collect();
+      .collect()
+      .filter(idx => idx.orgId === args.orgId);
 
     // Filter by search term
     const filtered = indexes.filter(idx =>
-      idx.searchableContent.toLowerCase().includes(searchLower)
+      idx.searchableText.toLowerCase().includes(searchLower)
     );
 
     // Sort by relevance (last message time)
@@ -101,11 +102,10 @@ export const searchConversations = query({
     const results = await Promise.all(
       filtered.slice(0, limit).map(async (idx) => {
         const conversation = await ctx.db.get(idx.conversationId);
-        const customer = await ctx.db.get(idx.customerId);
+        const customer = conversation ? await ctx.db.get(conversation.customerId) : null;
         return {
           conversation,
           customer,
-          messageCount: idx.messageCount,
         };
       })
     );
@@ -117,7 +117,7 @@ export const searchConversations = query({
 /**
  * Rebuild search index for all conversations (maintenance)
  */
-export const rebuildSearchIndex = internalMutation({
+export const rebuildSearchIndex: any = internalMutation({
   args: {
     orgId: v.string(),
   },
