@@ -31,7 +31,7 @@ export const getEvaluations = query({
     if (args.needsReview !== undefined) {
       q = ctx.db
         .query("ai_evaluations")
-        .withIndex("by_needs_review", (q) => q.eq("needsReview", args.needsReview));
+        .withIndex("by_needs_review", (q) => q.eq("needsReview", args.needsReview!));
     }
 
     return await q.order("desc").take(args.limit || 50);
