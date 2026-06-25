@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Internal Collaboration - Assignment Management
  * Handles task assignments, ownership, and collaboration

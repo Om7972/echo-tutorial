@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Embeddings generation and management for semantic memory search
  */

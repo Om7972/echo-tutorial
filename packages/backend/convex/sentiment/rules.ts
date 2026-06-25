@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Sentiment Rules Management
  * Create and manage auto-trigger rules

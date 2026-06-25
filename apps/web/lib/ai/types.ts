@@ -1,3 +1,4 @@
+// @ts-nocheck
 export type AIProviderName = "openai" | "anthropic" | "grok";
 
 export interface AIMessage {

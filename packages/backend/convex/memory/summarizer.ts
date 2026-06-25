@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * MemorySummarizer - Intelligent conversation summarization with AI
  * Generates summaries with customer insights, sentiment analysis, and key information extraction

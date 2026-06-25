@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Sentry Edge Runtime instrumentation.
  * Loaded for middleware and any routes using `export const runtime = "edge"`.

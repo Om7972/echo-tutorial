@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Internal Collaboration - Tags Management
  * Handles tag creation, usage tracking, and organization

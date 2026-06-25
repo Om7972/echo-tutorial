@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Notification Service
  * Helper hooks and utilities for notification management

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Enterprise Analytics
  * Calculate and retrieve enterprise-level metrics

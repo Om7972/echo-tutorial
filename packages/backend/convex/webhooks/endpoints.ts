@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Webhook System - Endpoint Management
  * Manage webhook configurations

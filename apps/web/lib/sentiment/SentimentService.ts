@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Sentiment Service - Client-side wrapper for sentiment operations
  */

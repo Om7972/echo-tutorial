@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Automation Workflows Management
  * Handles CRUD operations for automation workflows

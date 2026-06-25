@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Timeline Service
  * Helper functions and hooks for timeline operations

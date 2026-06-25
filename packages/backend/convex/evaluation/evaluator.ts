@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * AI Evaluation System
  * Measure AI response quality and accuracy

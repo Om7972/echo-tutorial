@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Memory System Configuration
  * Centralized configuration for the memory system

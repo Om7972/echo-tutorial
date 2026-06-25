@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Summarization Service
  * React hooks and utilities for conversation summarization

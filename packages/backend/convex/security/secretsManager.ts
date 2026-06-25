@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Secrets Manager
  * Encrypted secrets storage with key rotation

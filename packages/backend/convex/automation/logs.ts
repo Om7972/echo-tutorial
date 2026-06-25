@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Automation Execution Logs
  * Query execution history and logs

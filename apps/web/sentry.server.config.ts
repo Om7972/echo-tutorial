@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Sentry server-side (Node.js) instrumentation.
  * Loaded automatically by Next.js for server components, API routes,

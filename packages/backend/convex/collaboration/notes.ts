@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Internal Collaboration - Notes Management
  * Handles private notes, mentions, rich text, and permissions

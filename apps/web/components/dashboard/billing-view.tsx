@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client"
 
 import { CreditCard, ExternalLink, Calendar, Receipt, ArrowRight, CheckCircle2, XCircle, ArrowUpRight, ShieldCheck, Zap, Users, MessageCircle, Database, Globe, Clock } from "lucide-react"

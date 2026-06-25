@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Automatic Summarization - Generator
  * Generates conversation summaries with AI

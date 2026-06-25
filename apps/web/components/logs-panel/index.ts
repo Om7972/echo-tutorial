@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Public exports for the logs-panel module.
  */

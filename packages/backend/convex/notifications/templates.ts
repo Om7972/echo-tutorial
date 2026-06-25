@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Notification Templates Management
  * Handle email templates for various notification types

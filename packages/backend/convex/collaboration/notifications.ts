@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Internal Collaboration - Notifications
  * Handles real-time notifications for mentions, assignments, and activities

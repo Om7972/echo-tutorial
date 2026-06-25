@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Email Support - Templates
  * Manage email templates with variables

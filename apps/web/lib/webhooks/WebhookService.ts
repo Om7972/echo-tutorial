@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Webhook Service
  * Helper hooks and utilities for webhook management

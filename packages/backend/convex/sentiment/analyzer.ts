@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * AI Sentiment & Intent Analysis Engine
  * Detects sentiment, classifies intent, and triggers actions

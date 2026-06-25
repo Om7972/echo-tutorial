@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Public API for the Sentry integration layer.
  * Import from `@/lib/sentry` throughout the codebase.

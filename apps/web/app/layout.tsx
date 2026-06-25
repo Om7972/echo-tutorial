@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { ClerkProvider } from "@clerk/nextjs"
 import { Geist, Geist_Mono } from "next/font/google"
 

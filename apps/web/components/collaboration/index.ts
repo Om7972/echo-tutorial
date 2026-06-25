@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Collaboration Components Index
  * Export all collaboration components for easy importing

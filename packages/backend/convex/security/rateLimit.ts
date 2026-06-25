@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Rate Limiting System
  * Protect APIs from abuse

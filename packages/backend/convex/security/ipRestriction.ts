@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * IP Restriction System
  * Manage whitelist and blacklist

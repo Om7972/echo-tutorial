@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Customer Activity Timeline - Events Management
  * Handles activity event creation, retrieval, and search

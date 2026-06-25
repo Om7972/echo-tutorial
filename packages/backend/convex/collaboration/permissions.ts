@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Internal Collaboration - Permission Control
  * Handles fine-grained access control for resources

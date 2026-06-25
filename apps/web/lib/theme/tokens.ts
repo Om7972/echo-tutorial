@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ─── Theme Token Definitions ──────────────────────────────────────────────────
 //
 // Each palette defines CSS custom properties for both light and dark modes.

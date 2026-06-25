@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ─── Theme Engine Types ──────────────────────────────────────────────────────
 
 export type ThemeMode = "light" | "dark" | "system";

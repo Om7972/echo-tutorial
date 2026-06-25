@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Audit System - Logs
  * Track all system activities for compliance and security

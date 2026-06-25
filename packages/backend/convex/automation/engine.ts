@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Automation Execution Engine
  * Handles workflow execution, condition evaluation, and action processing

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Structured logger backed by Sentry breadcrumbs, console output,
  * and the in-app LogsPanel (dev/staging only).

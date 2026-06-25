@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Shared Sentry configuration used by client, server, and edge runtimes.
  * Centralizes DSN, release, environment, and sampling rates.

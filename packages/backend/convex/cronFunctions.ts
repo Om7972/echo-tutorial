@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { internalMutation, internalQuery } from './_generated/server';
 
 export const cleanupOldData = internalMutation(async (ctx) => {

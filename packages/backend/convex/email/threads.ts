@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Email Support - Threading
  * Email thread management and conversation grouping

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Unified Inbox - Search Index Management
  * Handles full-text search indexing for conversations

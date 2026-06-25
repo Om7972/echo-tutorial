@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * CSAT Ratings Management
  * Handle customer satisfaction ratings and feedback

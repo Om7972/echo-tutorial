@@ -383,7 +383,8 @@ export default defineSchema({
       filterFields: ["orgId"],
     })
     .index("by_chunk_id", ["chunkId"])
-    .index("by_document_id", ["documentId"]),
+    .index("by_document_id", ["documentId"])
+    .index("by_org_id", ["orgId"]),
 
   citations: defineTable({
     orgId: v.string(),

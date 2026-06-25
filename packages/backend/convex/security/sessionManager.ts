@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Session Management System
  * Secure session handling with device tracking

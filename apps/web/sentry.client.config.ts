@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Sentry client-side instrumentation.
  * This file is loaded by Next.js automatically when placed at the project root

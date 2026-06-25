@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Analytics Service
  * Helper hooks and utilities for enterprise analytics

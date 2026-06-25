@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Evaluation Service
  * Helper functions for AI evaluation

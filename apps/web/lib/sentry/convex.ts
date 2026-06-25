@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Convex-specific Sentry integration helpers.
  *

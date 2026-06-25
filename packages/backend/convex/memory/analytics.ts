@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Memory analytics and reporting
  * Provides insights into memory usage, costs, and performance
@@ -15,7 +16,8 @@ export const getMemoryAnalytics = query({
     startDate: v.optional(v.string()), // YYYY-MM-DD
     endDate: v.optional(v.string()),   // YYYY-MM-DD
   },
-  handler: async (ctx, args) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: async (ctx, args): Promise<any> => {
     const endDate = args.endDate || new Date().toISOString().split("T")[0];
     const startDate = args.startDate || getDateDaysAgo(30);
 

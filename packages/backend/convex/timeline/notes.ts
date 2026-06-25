@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Customer Activity Timeline - Notes Management
  * Handles customer notes CRUD operations

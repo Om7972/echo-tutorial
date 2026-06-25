@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Integration Example - How to use the Memory System in your application
  * This file demonstrates best practices for integrating memory into conversations

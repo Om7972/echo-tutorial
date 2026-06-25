@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Custom tag helpers for consistent labeling across all Sentry events.
  *

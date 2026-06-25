@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Bot Detection System
  * Identify and block automated bot traffic

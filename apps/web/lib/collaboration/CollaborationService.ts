@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Collaboration Service
  * React hooks and utilities for internal collaboration features

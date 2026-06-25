@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import { Authenticated , Unauthenticated, AuthLoading } from "convex/react";

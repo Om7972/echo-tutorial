@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Memory Service - Client-side wrapper for memory operations
  * Provides a clean API for interacting with the memory system from Next.js

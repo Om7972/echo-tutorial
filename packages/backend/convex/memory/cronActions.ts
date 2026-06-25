@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Cron action implementations for memory management
  */

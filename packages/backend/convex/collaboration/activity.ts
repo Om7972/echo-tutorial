@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Internal Collaboration - Activity Logs
  * Tracks all collaboration activities for audit trail

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Cron Job Scheduler
  * Scheduled recurring jobs

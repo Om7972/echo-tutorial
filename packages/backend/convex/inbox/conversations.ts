@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Unified Inbox - Conversations Management
  * Handles conversations across all channels

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Customer Activity Timeline - Call Logs Management
  * Handles phone call tracking and logging

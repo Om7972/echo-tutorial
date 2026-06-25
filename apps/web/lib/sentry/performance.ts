@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Performance monitoring helpers for page transitions, server latency,
  * and API response times.

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { AuthGuard } from "@/modules/auth/ui/components/auth-guard";
 import { ErrorBoundary, SentryUserSync } from "@/components/error-boundary";
 

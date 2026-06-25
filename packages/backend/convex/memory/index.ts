@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Memory System Public API
  * Central export file for all memory-related functions

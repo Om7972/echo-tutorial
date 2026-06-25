@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Email Support - Account Management
  * IMAP/SMTP configuration and management

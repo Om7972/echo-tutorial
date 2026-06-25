@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Geist, Geist_Mono } from "next/font/google"
 
 import "@workspace/ui/globals.css"

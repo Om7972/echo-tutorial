@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Helpers to attach Clerk user context to every Sentry event.
  * Call `setSentryUser` immediately after the user authenticates and

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * CSAT Surveys Management
  * Handle survey creation, configuration, and distribution

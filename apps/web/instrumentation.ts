@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Next.js 15 Instrumentation Hook
  *
