@@ -113,7 +113,7 @@ export const evaluateResponse: any = action({
   },
 });
 
-export const generateQualityReport = action({
+export const generateQualityReport: any = action({
   args: {
     orgId: v.string(),
     dateFrom: v.string(),
