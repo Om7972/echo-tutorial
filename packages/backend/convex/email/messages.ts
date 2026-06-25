@@ -482,17 +482,24 @@ export const linkToConversation = mutation({
         channelId: args.emailMessageId as any,
         channelType: "email",
         customerId: undefined as any, // TODO: Find or create customer
+        customerName: args.from.name || args.from.email,
         status: "open",
         priority: "medium",
+        category: undefined,
         tags: [],
+        lastMessageText: args.subject,
+        lastMessageAt: Date.now(),
+        lastMessageFrom: "customer",
+        unreadCount: 1,
+        totalMessages: 1,
+        hasSentimentAnalysis: false,
         metadata: {
           threadId: args.threadId,
           subject: args.subject,
         },
-        unreadCount: 1,
-        lastMessageAt: Date.now(),
-        lastMessagePreview: args.subject,
-        createdAt: Date.now(),
+        isArchived: false,
+        isPinned: false,
+        startedAt: Date.now(),
         updatedAt: Date.now(),
       });
     }
