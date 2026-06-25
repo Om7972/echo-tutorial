@@ -45,7 +45,7 @@ export const updateSearchIndex = internalMutation({
     if (existingIndex) {
       // Update existing index
       await ctx.db.patch(existingIndex._id, {
-        searchableContent,
+        searchableText: searchableContent,
         messageCount: messages.length,
         lastMessageAt: conversation.lastMessageAt,
         updatedAt: Date.now(),
@@ -56,7 +56,7 @@ export const updateSearchIndex = internalMutation({
         orgId: conversation.orgId,
         conversationId: args.conversationId,
         customerId: conversation.customerId,
-        searchableContent,
+        searchableText: searchableContent,
         messageCount: messages.length,
         lastMessageAt: conversation.lastMessageAt,
         createdAt: Date.now(),
