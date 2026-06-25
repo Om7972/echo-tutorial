@@ -73,7 +73,7 @@ export const getEvaluationStats = query({
 
 // ─── Actions ────────────────────────────────────────────────────────────────
 
-export const evaluateResponse = action({
+export const evaluateResponse: any = action({
   args: {
     orgId: v.string(),
     conversationId: v.id("conversations"),
