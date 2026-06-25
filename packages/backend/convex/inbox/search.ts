@@ -85,9 +85,9 @@ export const searchConversations = query({
     const limit = args.limit || 50;
 
     // Get all search indexes for the org
-    const indexes = await ctx.db
+    const indexes = (await ctx.db
       .query("conversation_search_index")
-      .collect()
+      .collect())
       .filter(idx => idx.orgId === args.orgId);
 
     // Filter by search term
