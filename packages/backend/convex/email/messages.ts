@@ -482,7 +482,7 @@ export const linkToConversation = mutation({
         channelId: args.emailMessageId as any,
         channelType: "email",
         customerId: undefined as any, // TODO: Find or create customer
-        status: "active",
+        status: "open",
         priority: "medium",
         tags: [],
         metadata: {
