@@ -25,7 +25,7 @@ export const getEvaluations = query({
     if (args.conversationId) {
       q = ctx.db
         .query("ai_evaluations")
-        .withIndex("by_conversation_id", (q) => q.eq("conversationId", args.conversationId));
+        .withIndex("by_conversation_id", (q) => q.eq("conversationId", args.conversationId!));
     }
 
     if (args.needsReview !== undefined) {
